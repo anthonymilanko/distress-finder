@@ -1,26 +1,48 @@
 @import "tailwindcss";
+@import "maplibre-gl/dist/maplibre-gl.css";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg: #f7f4f0;
+  --surface: #ffffff;
+  --ink: #16201b;
+  --muted: #5f6b65;
+  --line: #e4ded6;
+  --brand: #9e0000;
+  --brand-ink: #ffffff;
+  --dark: #05150e;
+  --hot: #9e0000;
+  --warm: #b86e00;
+  --cool: #2f6f4e;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-brand: var(--brand);
+  --color-dark: var(--dark);
+  --color-hot: var(--hot);
+  --color-warm: var(--warm);
+  --color-cool: var(--cool);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
+html, body { height: 100%; }
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  -webkit-tap-highlight-color: transparent;
 }
+
+/* Safe-area padding for the bottom nav on iPhone */
+.pb-safe { padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 0.5rem); }
+
+.btn { @apply inline-flex items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium border border-line bg-surface active:scale-[0.98] transition; }
+.btn-brand { @apply bg-brand text-white border-brand; }
+.btn-dark { @apply bg-dark text-white border-dark; }
+.chip { @apply inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium; }
+.card { @apply bg-surface border border-line rounded-xl p-4; }
+.label { @apply text-[11px] uppercase tracking-wide text-muted; }
+.input { @apply w-full rounded-lg border border-line bg-surface px-3 py-2 text-base; }

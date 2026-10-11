@@ -1,0 +1,30 @@
+{
+  "manifest_version": 3,
+  "name": "TJ Record Reader",
+  "version": "0.1.0",
+  "description": "Prefills court-record party-name searches from the Distress Finder app and lets you save the visible results page back to a property. Human-driven: never submits or paginates for you.",
+  "permissions": ["storage", "activeTab"],
+  "host_permissions": [
+    "https://wcca.wicourts.gov/*",
+    "http://localhost:3000/*"
+  ],
+  "optional_host_permissions": ["https://*/*"],
+  "background": { "service_worker": "background.js" },
+  "content_scripts": [
+    {
+      "matches": ["https://wcca.wicourts.gov/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "externally_connectable": {
+    "matches": ["http://localhost:3000/*", "https://*.vercel.app/*"]
+  },
+  "options_page": "options.html",
+  "action": {
+    "default_title": "TJ Record Reader",
+    "default_popup": "popup.html",
+    "default_icon": { "16": "icons/icon16.png", "48": "icons/icon48.png", "128": "icons/icon128.png" }
+  },
+  "icons": { "16": "icons/icon16.png", "48": "icons/icon48.png", "128": "icons/icon128.png" }
+}
