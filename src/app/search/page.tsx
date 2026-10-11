@@ -34,7 +34,7 @@ export default function SearchPage() {
   }
 
   return (
-    <div className="px-4 py-4 max-w-2xl mx-auto flex flex-col gap-3">
+    <div className="px-4 py-4 md:px-8 md:py-6 max-w-2xl md:mx-0 flex flex-col gap-3">
       <h1 className="text-lg font-semibold">Search an address</h1>
       <p className="text-sm text-muted">Type any address. The app pulls the property live (beds, baths, sq ft, lot, year built, owner, equity, distress flags) and saves it — no list import needed.</p>
       <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); if (q.trim()) lookup({ address: q }); }}>

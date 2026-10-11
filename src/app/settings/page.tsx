@@ -21,7 +21,7 @@ export default function SettingsPage() {
   if (!s) return <div className="p-4 text-muted">Loading…</div>;
   const capPct = Math.min(100, Math.round((s.spend.costUsd / s.spend.capUsd) * 100));
   return (
-    <div className="px-4 py-4 max-w-2xl mx-auto flex flex-col gap-4">
+    <div className="px-4 py-4 md:px-8 md:py-6 max-w-2xl md:mx-0 flex flex-col gap-4">
       <h1 className="text-lg font-semibold">Settings & status</h1>
 
       <section className="card">

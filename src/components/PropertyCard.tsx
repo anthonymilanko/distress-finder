@@ -51,8 +51,8 @@ export default function PropertyCard({
   const foreclosureCase = p.distressTypes.includes("pre_foreclosure") || p.distressTypes.includes("foreclosure");
 
   return (
-    <div className="px-4 py-4 flex flex-col gap-4 max-w-2xl mx-auto">
-      {p.isSample && <div className="rounded-lg bg-warm/10 border border-warm text-sm px-3 py-2">Sample / mock data — not a real lead.</div>}
+    <div className="px-4 py-4 md:px-8 md:py-6 grid gap-4 max-w-6xl mx-auto md:grid-cols-2 [&>section]:self-start">
+      {p.isSample && <div className="md:col-span-2 rounded-lg bg-warm/10 border border-warm text-sm px-3 py-2">Sample / mock data — not a real lead.</div>}
 
       <section className="card">
         <div className="flex items-start justify-between gap-2">

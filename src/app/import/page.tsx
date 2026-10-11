@@ -25,7 +25,7 @@ export default function ImportPage() {
   }
 
   return (
-    <div className="px-4 py-4 max-w-2xl mx-auto flex flex-col gap-4">
+    <div className="px-4 py-4 md:px-8 md:py-6 max-w-2xl md:mx-0 flex flex-col gap-4">
       <h1 className="text-lg font-semibold">Import a list</h1>
       <p className="text-sm text-muted">Upload a BatchLeads CSV export (or any lead list with an address column). Rows are normalized and deduped on parcel + address; existing properties are updated, not duplicated. Desktop recommended.</p>
       <label className={`card border-dashed text-center cursor-pointer ${busy ? "opacity-50" : ""}`}>

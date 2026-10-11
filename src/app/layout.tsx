@@ -19,16 +19,16 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className="h-full antialiased">
-      <body className="min-h-full flex flex-col">
-        <header className="bg-dark text-white px-4 py-3 flex items-center gap-3 sticky top-0 z-30">
+      <body className="min-h-full flex flex-col md:flex-row">
+        <header className="bg-dark text-white px-4 py-3 flex items-center gap-3 sticky top-0 z-30 md:hidden">
           <span className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-white text-dark font-bold text-sm">TJ</span>
           <div className="leading-tight">
             <div className="font-semibold">Distress Finder</div>
             <div className="text-[11px] text-white/70">TJ Investment Group</div>
           </div>
         </header>
-        <main className="flex-1 pb-20">{children}</main>
         <Nav />
+        <main className="flex-1 pb-20 md:pb-0 md:h-dvh md:overflow-y-auto">{children}</main>
       </body>
     </html>
   );
