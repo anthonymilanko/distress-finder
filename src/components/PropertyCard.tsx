@@ -109,7 +109,7 @@ export default function PropertyCard({
           <div><div className="label">Owned</div>{p.yearsOwned != null ? `${p.yearsOwned} yrs` : "—"}</div>
           <div><div className="label">Est. value</div>{money(p.estValue)}</div>
           <div><div className="label">Mortgage bal.</div>{money(p.mortgageBalance)}</div>
-          <div><div className="label">Est. equity</div>{money(p.estEquity)} <span className="text-muted">({pct(p.estEquityPct)}{p.ltvPct != null ? `, LTV ${Math.round(p.ltvPct)}%` : ""})</span></div>
+          <div><div className="label">Est. equity</div>{money(p.estEquity)} <span className="text-muted">({pct(p.estEquityPct)}{p.ltvPct != null ? `, LTV ${Math.round(p.ltvPct)}%` : ""})</span>{p.ltvPct === 0 && p.estEquityPct == null ? <div className="text-xs text-warm">LTV reported as 0 but a mortgage is implied (foreclosure list) — equity unknown until lien check.</div> : null}</div>
           <div><div className="label">Source</div>{p.source} · {p.sourceDate}</div>
         </div>
         <div className="text-xs text-muted mt-2">Values are estimates until confirmed with title / Register of Deeds.</div>

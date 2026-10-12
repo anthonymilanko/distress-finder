@@ -485,10 +485,15 @@ export function normalizeRow(
     estEquityPct = Math.round((estEquity / estValue) * 1000) / 10;
   }
   // LTV is the only equity signal in skip-trace exports: equity % ≈ 100 − LTV.
+  // An LTV of exactly 0 usually means "no loan found", not "no loan" — so it is
+  // only trusted when nothing says a mortgage exists (no foreclosure flag, no balance).
   let ltvPct = parseNum(raw("ltvPct"));
   if (ltvPct !== undefined && ltvPct > 0 && ltvPct <= 1) ltvPct = ltvPct * 100; // 0.25 → 25%
-  if (estEquityPct === undefined && ltvPct !== undefined && ltvPct >= 0 && ltvPct <= 100) {
-    estEquityPct = Math.round((100 - ltvPct) * 10) / 10;
+  const distressHint = rawList("distress").join(" ").toLowerCase() + (isTruthy(raw("preForeclosure")) ? " foreclosure" : "");
+  const mortgageImplied = /foreclos|pre-fore|lis pendens|notice of default|auction/.test(distressHint) || (mortgageBalance !== undefined && mortgageBalance > 0);
+  const ltvUsable = ltvPct !== undefined && ltvPct >= 0 && ltvPct <= 100 && !(ltvPct === 0 && mortgageImplied);
+  if (estEquityPct === undefined && ltvUsable) {
+    estEquityPct = Math.round((100 - (ltvPct as number)) * 10) / 10;
   }
   if (estEquity === undefined && estEquityPct !== undefined && estValue !== undefined) {
     estEquity = Math.round(estValue * (estEquityPct / 100));
