@@ -14,6 +14,7 @@ export type DistressType =
   | "code_violation"
   | "tired_landlord"
   | "divorce"
+  | "expired_listing"
   | "other";
 
 export type MatchConfidence = "confirmed" | "possible_match" | "estimate";

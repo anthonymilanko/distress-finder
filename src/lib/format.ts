@@ -18,6 +18,7 @@ export const DISTRESS_LABEL: Record<DistressType, string> = {
   code_violation: "Code violation",
   tired_landlord: "Tired landlord",
   divorce: "Divorce / family case",
+  expired_listing: "Expired listing",
   other: "Other",
 };
 

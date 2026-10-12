@@ -43,6 +43,7 @@ export function recordsPoints(p: Property): number {
   if (p.distressTypes.includes("vacant")) pts += 8;
   if (p.distressTypes.includes("probate")) pts += 8;
   if (p.distressTypes.includes("code_violation")) pts += 6;
+  if (p.distressTypes.includes("tired_landlord") || p.distressTypes.includes("divorce") || p.distressTypes.includes("expired_listing")) pts += 5;
   if (p.absentee) pts += 6;
   if ((p.yearsOwned ?? 0) >= 15) pts += 5;
   if ((p.estEquityPct ?? 0) >= 50) pts += 6;

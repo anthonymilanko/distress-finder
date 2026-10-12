@@ -143,6 +143,7 @@ export default function PropertyCard({
             <Fact k="Type" v={p.propertyType ?? undefined} />
             <Fact k="Source" v={`${p.source} · ${p.sourceDate}`} />
           </div>
+          {p.source === "batchdata_lookup" && <a className="text-xs text-muted hover:text-ink underline mt-2 inline-block" href={`/api/properties/${p.id}/raw`} target="_blank" rel="noreferrer">View raw BatchData response</a>}
           <div className="text-xs text-muted mt-3">Values are estimates until confirmed with title / Register of Deeds.</div>
           {(p.phones?.length || p.emails?.length) ? (
             <div className="mt-3 border-t border-line pt-3">

@@ -373,6 +373,7 @@ function distressFromText(text: string): DistressType[] {
   if (/vacant/.test(t)) out.push("vacant");
   if (/\bcode\b|violation/.test(t)) out.push("code_violation");
   if (/tired\s*landlord|landlord|eviction/.test(t)) out.push("tired_landlord");
+  if (/expired|withdrawn|cancell?ed\s*listing/.test(t)) out.push("expired_listing");
   return out;
 }
 

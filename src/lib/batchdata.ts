@@ -107,6 +107,8 @@ export async function lookupByAddress(addr: ParsedAddress): Promise<LookupResult
     const raw = data.results?.properties?.[0];
     if (!raw) throw new Error("No property found for that address.");
     property = mapLookup(raw, addr);
+    // Keep the untouched response so the card can show "what BatchData said" and mapping can be tuned.
+    await repo.putLookup(`bd:raw:${property.id}`, raw);
   }
   await repo.putLookup(cacheKey, property);
   return { property, cached: false, live: Boolean(KEY), costUsd: KEY ? EST_COST_PER_LOOKUP : 0 };
@@ -125,16 +127,17 @@ export function mapLookup(raw: Any, addr: ParsedAddress): Property {
   const city = str(g(raw, "address", "city")) ?? addr.city ?? "";
   const state = (str(g(raw, "address", "state")) ?? addr.state ?? "").toUpperCase();
   const zip = (str(g(raw, "address", "zip")) ?? addr.zip ?? "").slice(0, 5);
-  const parcel = str(g(raw, "ids", "apn")) ?? str(g(raw, "assessment", "apn")) ?? str(raw.apn);
+  const parcel = str(g(raw, "general", "apn")) ?? str(g(raw, "ids", "apn")) ?? str(g(raw, "assessment", "apn")) ?? str(g(raw, "legal", "apn")) ?? str(raw.apn);
   const mailingAddress = str(g(raw, "owner", "mailingAddress", "street"));
   const ownerFirst = str(g(raw, "owner", "names", "0", "first")) ?? str(g(raw, "owner", "firstName"));
   const ownerLast = str(g(raw, "owner", "names", "0", "last")) ?? str(g(raw, "owner", "lastName"));
-  const ownerName = str(g(raw, "owner", "fullName")) ?? ([ownerFirst, ownerLast].filter(Boolean).join(" ") || undefined);
-  const estValue = num(g(raw, "valuation", "estimatedValue"));
-  const mortgageBalance = num(g(raw, "openLien", "totalOpenLienBalance")) ?? num(g(raw, "valuation", "loanBalance"));
+  const ownerName = str(g(raw, "owner", "fullName")) ?? str(g(raw, "owner", "names", "0", "full")) ?? str(g(raw, "owner", "name")) ?? ([ownerFirst, ownerLast].filter(Boolean).join(" ") || undefined);
+  const ownerOccupied = g(raw, "owner", "ownerOccupied") as boolean | undefined;
+  const estValue = num(g(raw, "valuation", "estimatedValue")) ?? num(g(raw, "valuation", "avm")) ?? num(g(raw, "assessment", "totalMarketValue")) ?? num(g(raw, "assessment", "assessedValue"));
+  const mortgageBalance = num(g(raw, "openLien", "totalOpenLienBalance")) ?? num(g(raw, "openLien", "totalOpenLienAmount")) ?? num(g(raw, "valuation", "loanBalance")) ?? num(g(raw, "mortgage", "totalBalance"));
   const estEquity = num(g(raw, "valuation", "equityCurrentEstimatedBalance")) ?? (estValue != null && mortgageBalance != null ? estValue - mortgageBalance : undefined);
-  const estEquityPct = num(g(raw, "valuation", "equityPercent")) ?? (estValue && estEquity != null ? Math.round((estEquity / estValue) * 1000) / 10 : undefined);
-  const lastSaleDate = isoDate(g(raw, "sale", "lastSale", "saleDate"));
+  const estEquityPct = num(g(raw, "valuation", "equityPercent")) ?? num(g(raw, "valuation", "equityCurrentEstimatedPercent")) ?? (estValue && estEquity != null ? Math.round((estEquity / estValue) * 1000) / 10 : undefined);
+  const lastSaleDate = isoDate(g(raw, "sale", "lastSale", "saleDate")) ?? isoDate(g(raw, "sale", "lastSale", "recordingDate")) ?? isoDate(g(raw, "sale", "lastSaleDate")) ?? isoDate(g(raw, "deed", "lastSaleDate"));
   const yearsOwned = lastSaleDate ? Math.floor((Date.now() - +new Date(lastSaleDate)) / (365.25 * 864e5)) : undefined;
 
   const distressTypes: DistressType[] = [];
@@ -144,6 +147,7 @@ export function mapLookup(raw: Any, addr: ParsedAddress): Property {
   if (g(raw, "quickLists", "involuntaryLien") || num(g(raw, "involuntaryLien", "count"))) distressTypes.push("lien");
   if (g(raw, "quickLists", "vacant")) distressTypes.push("vacant");
   if (g(raw, "quickLists", "inherited") || g(raw, "quickLists", "probate")) distressTypes.push("probate");
+  if (g(raw, "quickLists", "expiredListing")) distressTypes.push("expired_listing");
 
   const photos: PropertyPhoto[] = ((g(raw, "images") as Array<Any> | undefined) ?? [])
     .map((im) => str(im.url))
@@ -157,23 +161,23 @@ export function mapLookup(raw: Any, addr: ParsedAddress): Property {
     dedupeKey: parcel ? normalizeParcel(parcel) : normalizeAddressKey(address, zip),
     address, city, state, zip,
     county: str(g(raw, "address", "county")),
-    lat: num(g(raw, "address", "geoLocation", "latitude")) ?? num(g(raw, "geoLocation", "latitude")),
-    lng: num(g(raw, "address", "geoLocation", "longitude")) ?? num(g(raw, "geoLocation", "longitude")),
+    lat: num(g(raw, "address", "geoLocation", "latitude")) ?? num(g(raw, "address", "latitude")) ?? num(g(raw, "geoLocation", "latitude")) ?? num(g(raw, "general", "latitude")),
+    lng: num(g(raw, "address", "geoLocation", "longitude")) ?? num(g(raw, "address", "longitude")) ?? num(g(raw, "geoLocation", "longitude")) ?? num(g(raw, "general", "longitude")),
     ownerName, ownerFirst, ownerLast,
     ownerIsBusiness: Boolean(g(raw, "owner", "isCorporate") ?? g(raw, "quickLists", "corporateOwned")),
     mailingAddress,
     mailingCity: str(g(raw, "owner", "mailingAddress", "city")),
     mailingState: str(g(raw, "owner", "mailingAddress", "state")),
     mailingZip: str(g(raw, "owner", "mailingAddress", "zip")),
-    absentee: Boolean(g(raw, "quickLists", "absenteeOwner")) || mailingMismatch,
-    beds: num(g(raw, "building", "bedroomCount")),
-    baths: num(g(raw, "building", "bathroomCount")),
-    sqft: num(g(raw, "building", "totalBuildingAreaSquareFeet")),
-    lotSqft: num(g(raw, "lot", "lotSizeSquareFeet")),
-    yearBuilt: num(g(raw, "building", "yearBuilt")),
-    propertyType: str(g(raw, "general", "propertyTypeDetail")) ?? str(g(raw, "general", "propertyType")),
+    absentee: Boolean(g(raw, "quickLists", "absenteeOwner")) || (ownerOccupied === false ? true : undefined) || mailingMismatch,
+    beds: num(g(raw, "building", "bedroomCount")) ?? num(g(raw, "building", "bedrooms")) ?? num(g(raw, "building", "roomsBedrooms")),
+    baths: num(g(raw, "building", "bathroomCount")) ?? num(g(raw, "building", "bathrooms")) ?? num(g(raw, "building", "totalBathroomCount")),
+    sqft: num(g(raw, "building", "totalBuildingAreaSquareFeet")) ?? num(g(raw, "building", "livingAreaSquareFeet")) ?? num(g(raw, "building", "squareFeet")) ?? num(g(raw, "building", "buildingAreaSquareFeet")),
+    lotSqft: num(g(raw, "lot", "lotSizeSquareFeet")) ?? (num(g(raw, "lot", "lotSizeAcres")) != null ? Math.round(Number(g(raw, "lot", "lotSizeAcres")) * 43560) : undefined),
+    yearBuilt: num(g(raw, "building", "yearBuilt")) ?? num(g(raw, "building", "effectiveYearBuilt")),
+    propertyType: str(g(raw, "general", "propertyTypeDetail")) ?? str(g(raw, "general", "propertyType")) ?? str(g(raw, "general", "propertyTypeCategory")) ?? str(g(raw, "building", "propertyType")),
     lastSaleDate,
-    lastSalePrice: num(g(raw, "sale", "lastSale", "price")),
+    lastSalePrice: num(g(raw, "sale", "lastSale", "price")) ?? num(g(raw, "sale", "lastSalePrice")) ?? num(g(raw, "deed", "lastSalePrice")),
     estValue, mortgageBalance, estEquity, estEquityPct, yearsOwned,
     distressTypes,
     leadStatus: "new",
