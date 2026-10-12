@@ -128,6 +128,21 @@ export class LocalRepo implements Repo {
     if (n) await this.save();
     return n;
   }
+  async upsertMany(rows: Property[]) {
+    const db = await this.load();
+    const byKey = new Map(db.properties.map((p, i) => [p.dedupeKey, i]));
+    for (const r of rows) {
+      const i = byKey.get(r.dedupeKey);
+      if (i === undefined) { byKey.set(r.dedupeKey, db.properties.length); db.properties.push(r); }
+      else db.properties[i] = { ...db.properties[i], ...r, id: db.properties[i].id };
+    }
+    await this.save();
+    return rows.length;
+  }
+  async exportAll() {
+    const db = await this.load();
+    return { properties: db.properties, liens: db.liens, notes: db.notes };
+  }
   private isUngeocoded(p: Property) {
     return (p.lat == null || p.lng == null) && p.geocodeStatus !== "no_match" && Boolean(p.address);
   }

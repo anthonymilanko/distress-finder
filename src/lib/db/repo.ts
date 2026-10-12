@@ -30,6 +30,8 @@ export interface Repo {
   upsertProperty(p: Property): Promise<Property>;
   updateProperty(id: string, patch: Partial<Property>): Promise<Property | null>;
   updateMany(patches: Array<{ id: string; patch: Partial<Property> }>): Promise<number>;
+  upsertMany(rows: Property[]): Promise<number>;
+  exportAll(): Promise<{ properties: Property[]; liens: Lien[]; notes: Note[] }>;
   listUngeocoded(limit: number): Promise<Property[]>;
   countUngeocoded(): Promise<number>;
   countNoMatch(): Promise<number>;

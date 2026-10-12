@@ -1,6 +1,6 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { ColumnMap, ColumnMapping, ImportLog, Lien, Note, Property, PropertyFilters, ScoreResult } from "@/lib/types";
-import { applyFilters, type Repo, type SpendDay } from "./repo";
+import { applyFilters, applyFiltersCounted, type Repo, type SpendDay } from "./repo";
 
 // ---- row <-> domain mapping (snake_case in Postgres, camelCase in app) ----
 type Row = Record<string, unknown>;
@@ -59,20 +59,27 @@ export class SupabaseRepo implements Repo {
     if (error) throw new Error(error.message);
   }
 
+  /** Fetch every matching row in pages of 1000 (PostgREST's per-request cap). */
+  private async fetchAll(filters: PropertyFilters, max = 20000): Promise<Property[]> {
+    const out: Property[] = [];
+    for (let from = 0; from < max; from += 1000) {
+      let q = this.sb.from("properties").select("*").order("updated_at", { ascending: false }).range(from, from + 999);
+      if (filters.state) q = q.eq("state", filters.state.toUpperCase());
+      if (filters.leadStatus) q = q.eq("lead_status", filters.leadStatus);
+      if (filters.absentee) q = q.eq("absentee", true);
+      if (filters.distressType) q = q.contains("distress_types", [filters.distressType]);
+      const { data, error } = await q;
+      this.throwIf(error);
+      out.push(...(data ?? []).map(fromRow));
+      if (!data || data.length < 1000) break;
+    }
+    return out;
+  }
   async listProperties(filters: PropertyFilters) {
-    // Push the cheap filters to SQL, finish with the shared in-memory filter.
-    let q = this.sb.from("properties").select("*").limit(filters.limit ?? 500);
-    if (filters.state) q = q.eq("state", filters.state.toUpperCase());
-    if (filters.leadStatus) q = q.eq("lead_status", filters.leadStatus);
-    if (filters.absentee) q = q.eq("absentee", true);
-    if (filters.distressType) q = q.contains("distress_types", [filters.distressType]);
-    const { data, error } = await q;
-    this.throwIf(error);
-    return applyFilters((data ?? []).map(fromRow), filters);
+    return applyFilters(await this.fetchAll(filters), filters);
   }
   async countProperties(filters: PropertyFilters): Promise<number> {
-    const rows = await this.listProperties({ ...filters, limit: 10000 });
-    return rows.length;
+    return applyFiltersCounted(await this.fetchAll(filters), filters).total;
   }
   async getProperty(id: string) {
     const { data, error } = await this.sb.from("properties").select("*").eq("id", id).maybeSingle();
@@ -95,12 +102,24 @@ export class SupabaseRepo implements Repo {
     return data ? fromRow(data) : null;
   }
   async updateMany(patches: Array<{ id: string; patch: Partial<Property> }>) {
+    // Run in small parallel groups; each is a single-row update.
     let n = 0;
-    for (const { id, patch } of patches) if (await this.updateProperty(id, patch)) n++;
+    for (let i = 0; i < patches.length; i += 20) {
+      const res = await Promise.all(patches.slice(i, i + 20).map(({ id, patch }) => this.updateProperty(id, patch)));
+      n += res.filter(Boolean).length;
+    }
     return n;
   }
+  /** Bulk insert/upsert used by backup restore. */
+  async upsertMany(rows: Property[]) {
+    for (let i = 0; i < rows.length; i += 500) {
+      const { error } = await this.sb.from("properties").upsert(rows.slice(i, i + 500).map(toRow), { onConflict: "dedupe_key" });
+      this.throwIf(error);
+    }
+    return rows.length;
+  }
   async listUngeocoded(limit: number) {
-    const { data, error } = await this.sb.from("properties").select("*").is("lat", null).or("geocode_status.is.null,geocode_status.neq.no_match").limit(limit);
+    const { data, error } = await this.sb.from("properties").select("*").is("lat", null).or("geocode_status.is.null,geocode_status.neq.no_match").limit(Math.min(limit, 1000));
     this.throwIf(error);
     return (data ?? []).map(fromRow);
   }
@@ -127,6 +146,19 @@ export class SupabaseRepo implements Repo {
   async putColumnMap(signature: string, headers: string[], mapping: ColumnMapping) {
     const { error } = await this.sb.from("column_maps").upsert({ signature, headers, mapping, saved_at: new Date().toISOString() });
     this.throwIf(error);
+  }
+  async exportAll() {
+    const properties = await this.fetchAll({});
+    const liens: Lien[] = []; const notes: Note[] = [];
+    for (let from = 0; ; from += 1000) {
+      const { data, error } = await this.sb.from("liens").select("*").range(from, from + 999); this.throwIf(error);
+      liens.push(...(data ?? []).map(lienFromRow)); if (!data || data.length < 1000) break;
+    }
+    for (let from = 0; ; from += 1000) {
+      const { data, error } = await this.sb.from("notes").select("*").range(from, from + 999); this.throwIf(error);
+      notes.push(...(data ?? []).map((r) => ({ id: r.id, propertyId: r.property_id, body: r.body, createdAt: r.created_at }))); if (!data || data.length < 1000) break;
+    }
+    return { properties, liens, notes };
   }
   async listLiens(propertyId: string) {
     const { data, error } = await this.sb.from("liens").select("*").eq("property_id", propertyId).order("filed_date", { ascending: false });

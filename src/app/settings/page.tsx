@@ -42,6 +42,15 @@ export default function SettingsPage() {
       </section>
 
       <section className="card text-sm">
+        <div className="label mb-1">Backup & restore</div>
+        <div className="flex flex-wrap gap-2 items-center">
+          <a className="btn" href="/api/backup" download>Download backup (.json)</a>
+          <label className="btn cursor-pointer">Restore from backup<input type="file" accept=".json,application/json" className="hidden" onChange={async (e) => { const f = e.target.files?.[0]; if (!f) return; const fd = new FormData(); fd.append("file", f); const d = await fetch("/api/backup", { method: "POST", body: fd }).then((r) => r.json()); alert(d.ok ? `Restored ${d.properties} properties, ${d.liens} court records, ${d.notes} notes.` : `Restore failed: ${d.error}`); }} /></label>
+        </div>
+        <div className="text-xs text-muted mt-2">Use this to move your data from the laptop version to the hosted one, or just to keep a copy. Restoring merges by address; nothing is deleted.</div>
+      </section>
+
+      <section className="card text-sm">
         <div className="label mb-1">Add to iPhone home screen</div>
         Open this site in Safari → Share → “Add to Home Screen”. It launches full-screen like an app.
       </section>

@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 import { readFileSync } from "node:fs";
 
-let version = "dev";
+let version = process.env.VERCEL_GIT_COMMIT_SHA ? `${new Date().toISOString().slice(0, 10)}-${process.env.VERCEL_GIT_COMMIT_SHA.slice(0, 7)}` : "dev";
 try { version = readFileSync("VERSION", "utf8").trim(); } catch { /* no VERSION file */ }
 
 const nextConfig: NextConfig = {
