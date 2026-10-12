@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import GhlPipelinePicker from "@/components/GhlPipelinePicker";
 
 interface Status {
   storage: "local" | "supabase"; dataDir: string; dbError?: string; passwordSet: boolean; batchData: boolean; ghl: boolean; claude: boolean; streetView: boolean; extensionToken: boolean;
@@ -45,6 +46,8 @@ export default function SettingsPage() {
         <Row label="Google Street View embed" on={s.streetView} hint="NEXT_PUBLIC_GOOGLE_MAPS_EMBED_KEY — display only; never sent to AI." />
         <Row label="Extension token" on={s.extensionToken} hint="DF_EXTENSION_TOKEN — must match the TJ Record Reader options." />
       </section>
+
+      {s.ghl && <GhlPipelinePicker />}
 
       <section className="card text-sm">
         <div className="label mb-1">Sign-in</div>

@@ -1,5 +1,6 @@
 import type { Property } from "@/lib/types";
 import { DISTRESS_LABEL } from "@/lib/format";
+import { getRepo } from "@/lib/db";
 
 /**
  * GoHighLevel push. Without GHL_API_KEY + GHL_LOCATION_ID this is a stub that
@@ -15,14 +16,45 @@ import { DISTRESS_LABEL } from "@/lib/format";
  */
 const API = "https://services.leadconnectorhq.com";
 
-export async function sendToGhl(p: Property): Promise<{ ok: boolean; stubbed: boolean; id?: string; error?: string }> {
+export interface GhlSettings {
+  pipelineId?: string;
+  pipelineName?: string;
+  stageId?: string;
+  stageName?: string;
+}
+const SETTINGS_KEY = "settings:ghl";
+
+export const ghlConfigured = () => Boolean(process.env.GHL_API_KEY?.trim() && process.env.GHL_LOCATION_ID?.trim());
+
+function ghlHeaders() {
+  return { Authorization: `Bearer ${process.env.GHL_API_KEY?.trim()}`, Version: "2021-07-28", "Content-Type": "application/json", Accept: "application/json" };
+}
+
+export async function getGhlSettings(): Promise<GhlSettings> {
+  const saved = await getRepo().getLookup<GhlSettings>(SETTINGS_KEY);
+  return saved ?? { pipelineId: process.env.GHL_PIPELINE_ID, stageId: process.env.GHL_STAGE_ID };
+}
+export async function saveGhlSettings(s: GhlSettings) {
+  await getRepo().putLookup(SETTINGS_KEY, s);
+}
+
+/** Pipelines + stages in the sub-account (needs the opportunities.readonly scope). */
+export async function listPipelines(): Promise<Array<{ id: string; name: string; stages: Array<{ id: string; name: string }> }>> {
+  const location = process.env.GHL_LOCATION_ID?.trim();
+  const res = await fetch(`${API}/opportunities/pipelines?locationId=${encodeURIComponent(location ?? "")}`, { headers: ghlHeaders() });
+  if (!res.ok) throw new Error(`GHL HTTP ${res.status}: ${(await res.text()).slice(0, 300)}`);
+  const data = (await res.json()) as { pipelines?: Array<{ id: string; name: string; stages?: Array<{ id: string; name: string }> }> };
+  return (data.pipelines ?? []).map((p) => ({ id: p.id, name: p.name, stages: (p.stages ?? []).map((st) => ({ id: st.id, name: st.name })) }));
+}
+
+export async function sendToGhl(p: Property): Promise<{ ok: boolean; stubbed: boolean; id?: string; opportunityId?: string; error?: string; warning?: string }> {
   const key = process.env.GHL_API_KEY?.trim();
   const location = process.env.GHL_LOCATION_ID?.trim();
   if (!key || !location) {
     console.log("[GHL stub] would create contact:", p.ownerName, p.address);
     return { ok: true, stubbed: true };
   }
-  const headers = { Authorization: `Bearer ${key}`, Version: "2021-07-28", "Content-Type": "application/json", Accept: "application/json" };
+  const headers = ghlHeaders();
   const tags = ["distress-finder", ...p.distressTypes.map((t) => `df:${t}`), ...(p.tags ?? []).map((t) => t.toLowerCase())];
   const body: Record<string, unknown> = {
     locationId: location,
@@ -59,5 +91,33 @@ export async function sendToGhl(p: Property): Promise<{ ok: boolean; stubbed: bo
     ].filter(Boolean);
     await fetch(`${API}/contacts/${id}/notes`, { method: "POST", headers, body: JSON.stringify({ body: lines.join("\n") }) }).catch(() => {});
   }
-  return { ok: true, stubbed: false, id };
+
+  // Opportunity in the chosen pipeline/stage (upsert = one per contact per pipeline).
+  let opportunityId: string | undefined;
+  let warning: string | undefined;
+  const settings = await getGhlSettings();
+  if (id && settings.pipelineId && settings.stageId) {
+    const oppRes = await fetch(`${API}/opportunities/upsert`, {
+      method: "POST", headers,
+      body: JSON.stringify({
+        pipelineId: settings.pipelineId,
+        locationId: location,
+        contactId: id,
+        name: `${p.address}, ${p.city}`,
+        status: "open",
+        pipelineStageId: settings.stageId,
+        ...(p.estValue != null ? { monetaryValue: Math.round(p.estValue) } : {}),
+        source: "Distress Finder",
+      }),
+    });
+    if (oppRes.ok) {
+      const od = (await oppRes.json()) as { opportunity?: { id?: string } };
+      opportunityId = od.opportunity?.id;
+    } else {
+      warning = `Contact saved, but the pipeline opportunity failed: HTTP ${oppRes.status} ${(await oppRes.text()).slice(0, 200)}`;
+    }
+  } else if (id) {
+    warning = "Contact saved. No pipeline chosen yet — pick one in Settings to also create an opportunity.";
+  }
+  return { ok: true, stubbed: false, id, opportunityId, warning };
 }

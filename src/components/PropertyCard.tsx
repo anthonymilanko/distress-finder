@@ -33,7 +33,7 @@ export default function PropertyCard({
     const r = await fetch(`/api/properties/${p.id}/ghl`, { method: "POST" });
     const d = await r.json();
     setBusy(false);
-    setMsg(d.ok ? (d.stubbed ? "GHL not connected yet — logged locally (add GHL_API_KEY to go live)." : "Sent to GoHighLevel.") : `GHL error: ${d.error}`);
+    setMsg(d.ok ? (d.stubbed ? "GHL not connected yet — logged locally (add GHL_API_KEY to go live)." : d.warning ?? (d.opportunityId ? "Sent to GoHighLevel: contact + pipeline opportunity." : "Sent to GoHighLevel.")) : `GHL error: ${d.error}`);
     if (d.ok && p.leadStatus === "new") setP({ ...p, leadStatus: "lead" });
   }
   async function rescore() {
