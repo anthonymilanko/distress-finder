@@ -24,6 +24,9 @@ const CASE_TYPE_TO_KIND: Record<string, DistressType> = {
   HL: "lien",
   OL: "lien",
   PR: "probate",
+  IN: "probate",
+  GN: "probate",
+  FA: "divorce",
 };
 
 export interface ParsedCase {
@@ -70,14 +73,18 @@ ${text.slice(0, 60_000)}`;
 function regexFallback(text: string): ParsedCase[] {
   const seen = new Set<string>();
   const out: ParsedCase[] = [];
-  const re = /\b(20\d{2})([A-Z]{2})(\d{6})\b/g;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(text))) {
+  const re = /\b((?:19|20)\d{2})([A-Z]{2})(\d{6})\b/g;
+  const matches = Array.from(text.matchAll(re));
+  for (let i = 0; i < matches.length; i++) {
+    const m = matches[i];
     const caseNumber = `${m[1]}${m[2]}${m[3]}`;
     if (seen.has(caseNumber)) continue;
     seen.add(caseNumber);
-    // Grab a little context after the case number for status / date.
-    const ctx = text.slice(m.index, m.index + 300);
+    // Context = text between this case number and the next one (capped), so
+    // one case's classification never bleeds onto its neighbor.
+    const start = m.index ?? 0;
+    const next = matches[i + 1]?.index ?? text.length;
+    const ctx = text.slice(start, Math.min(next, start + 400));
     const status = /\b(Open|Closed|Dismissed|Judgment)\b/i.exec(ctx)?.[1];
     const date = /\b(\d{2})[-/](\d{2})[-/](\d{4})\b/.exec(ctx);
     out.push({

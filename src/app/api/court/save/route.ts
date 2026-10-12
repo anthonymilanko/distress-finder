@@ -33,8 +33,9 @@ export async function POST(req: Request) {
     const existing = new Set((await repo.listLiens(p.id)).map((l) => l.caseNumber));
     const fresh = liens.filter((l) => !existing.has(l.caseNumber));
     await repo.addLiens(fresh);
+    // Only OPEN cases change the distress profile; closed usually means paid/dismissed.
     const kinds = new Set(p.distressTypes);
-    for (const l of fresh) if (l.kind !== "other") kinds.add(l.kind);
+    for (const l of fresh) if (l.kind !== "other" && /open|pending|active/i.test(l.status ?? "")) kinds.add(l.kind);
     await repo.updateProperty(p.id, { distressTypes: [...kinds] });
     return NextResponse.json({ ok: true, liensSaved: fresh.length, skippedDuplicates: liens.length - fresh.length, model, liens: fresh });
   } catch (e) {

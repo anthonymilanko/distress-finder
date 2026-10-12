@@ -13,6 +13,7 @@ export type DistressType =
   | "vacant"
   | "code_violation"
   | "tired_landlord"
+  | "divorce"
   | "other";
 
 export type MatchConfidence = "confirmed" | "possible_match" | "estimate";

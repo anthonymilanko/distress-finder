@@ -2,7 +2,7 @@
 import { useState } from "react";
 import type { CourtLink } from "@/lib/court-links";
 import type { LeadStatus, Lien, Note, Property } from "@/lib/types";
-import { DISTRESS_LABEL, LEAD_LABEL, money, num, pct } from "@/lib/format";
+import { DISTRESS_LABEL, LEAD_LABEL, caseTypeLabel, money, num, pct } from "@/lib/format";
 import { ScoreBadge } from "./PropertyRow";
 
 export default function PropertyCard({
@@ -132,13 +132,17 @@ export default function PropertyCard({
 
       <section className="card">
         <div className="label mb-2">Court & lien records</div>
+        {liens.length > 0 && <div className="text-xs text-muted mb-2">Open = still owed / live. Closed usually means paid or dismissed; it&apos;s history, not a current signal.</div>}
         {liens.length === 0 ? <div className="text-sm text-muted">None saved yet. Run a check below, then use the extension&apos;s “Save to property”.</div> : (
           <table className="w-full text-sm [&_td]:py-1 [&_td]:pr-2 [&_th]:pr-2 [&_th]:font-medium">
             <thead><tr className="text-left text-muted"><th>Case</th><th>Type</th><th>Status</th><th>Filed</th><th>Match</th></tr></thead>
             <tbody>
               {liens.map((l) => (
                 <tr key={l.id} className="border-t border-line">
-                  <td className="whitespace-nowrap">{l.caseNumber ?? "—"}</td><td>{l.caseType ?? l.kind}</td><td>{l.status ?? "—"}</td><td>{l.filedDate ?? "—"}</td>
+                  <td className="whitespace-nowrap">{l.caseNumber ?? "—"}</td>
+                  <td>{caseTypeLabel(l.caseType, l.kind)}{l.caseType ? <span className="text-muted text-xs"> ({l.caseType})</span> : null}{l.plaintiff ? <div className="text-xs text-muted">{l.plaintiff}</div> : null}</td>
+                  <td>{/open|pending|active/i.test(l.status ?? "") ? <span className="chip bg-hot text-white">{l.status}</span> : <span className="text-muted">{l.status ?? "—"}</span>}</td>
+                  <td className="whitespace-nowrap">{l.filedDate ?? "—"}{l.amount ? <div className="text-xs text-muted">{money(l.amount)}</div> : null}</td>
                   <td><span className={`chip ${l.confidence === "confirmed" ? "bg-cool text-white" : "bg-warm/15 border border-warm"}`}>{l.confidence.replace("_", " ")}</span></td>
                 </tr>
               ))}
