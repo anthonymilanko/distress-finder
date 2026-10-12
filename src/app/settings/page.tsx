@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 
 interface Status {
-  storage: "local" | "supabase"; dataDir: string; dbError?: string; batchData: boolean; ghl: boolean; claude: boolean; streetView: boolean; extensionToken: boolean;
+  storage: "local" | "supabase"; dataDir: string; dbError?: string; passwordSet: boolean; batchData: boolean; ghl: boolean; claude: boolean; streetView: boolean; extensionToken: boolean;
   spend: { day: string; scans: number; costUsd: number; capUsd: number };
 }
 
@@ -37,13 +37,21 @@ export default function SettingsPage() {
       </section>
 
       <section className="card">
-        <div className="label mb-1">Integrations (set in .env.local, then restart)</div>
+        <div className="label mb-1">Integrations (set in .env.local locally, or Vercel → Settings → Environment Variables)</div>
         <Row label={`Storage: ${s.storage}`} on={s.storage === "supabase"} hint={s.storage === "local" ? `Your data file: ${s.dataDir}/db.json (kept outside the app folder, safe across updates).` : "Supabase"} />
         <Row label="BatchData property lookup" on={s.batchData} hint="BATCHDATA_API_KEY — address search uses mock data without it." />
         <Row label="GoHighLevel" on={s.ghl} hint="GHL_API_KEY + GHL_LOCATION_ID — Send to GHL is stubbed without them." />
         <Row label="Claude (court-page parsing)" on={s.claude} hint="ANTHROPIC_API_KEY — falls back to a regex case-number reader." />
         <Row label="Google Street View embed" on={s.streetView} hint="NEXT_PUBLIC_GOOGLE_MAPS_EMBED_KEY — display only; never sent to AI." />
         <Row label="Extension token" on={s.extensionToken} hint="DF_EXTENSION_TOKEN — must match the TJ Record Reader options." />
+      </section>
+
+      <section className="card text-sm">
+        <div className="label mb-1">Sign-in</div>
+        <div className="flex items-center gap-3 flex-wrap">
+          <span>Password protection is {s.passwordSet ? "on (DF_APP_PASSWORD is set)." : "off — set DF_APP_PASSWORD to require a password."}</span>
+          {s.passwordSet && <button type="button" className="btn" onClick={async () => { await fetch("/api/login", { method: "DELETE" }); window.location.assign("/login"); }}>Sign out</button>}
+        </div>
       </section>
 
       <section className="card text-sm">

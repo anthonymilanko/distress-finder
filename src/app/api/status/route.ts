@@ -23,6 +23,7 @@ export async function GET() {
     claude: Boolean(process.env.ANTHROPIC_API_KEY),
     streetView: Boolean(process.env.NEXT_PUBLIC_GOOGLE_MAPS_EMBED_KEY),
     extensionToken: Boolean(process.env.DF_EXTENSION_TOKEN),
+    passwordSet: Boolean(process.env.DF_APP_PASSWORD),
     spend: { ...spend, capUsd: DAILY_CAP_USD },
   });
 }

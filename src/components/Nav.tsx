@@ -11,6 +11,7 @@ const items = [
 
 export default function Nav() {
   const path = usePathname();
+  if (path === "/login") return null;
   const isActive = (href: string) => (href === "/" ? path === "/" : path.startsWith(href));
   return (
     <>
