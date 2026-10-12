@@ -47,7 +47,7 @@ export async function listPipelines(): Promise<Array<{ id: string; name: string;
   return (data.pipelines ?? []).map((p) => ({ id: p.id, name: p.name, stages: (p.stages ?? []).map((st) => ({ id: st.id, name: st.name })) }));
 }
 
-export async function sendToGhl(p: Property): Promise<{ ok: boolean; stubbed: boolean; id?: string; opportunityId?: string; error?: string; warning?: string }> {
+export async function sendToGhl(p: Property, override?: { pipelineId?: string; stageId?: string }): Promise<{ ok: boolean; stubbed: boolean; id?: string; opportunityId?: string; error?: string; warning?: string }> {
   const key = process.env.GHL_API_KEY?.trim();
   const location = process.env.GHL_LOCATION_ID?.trim();
   if (!key || !location) {
@@ -95,7 +95,8 @@ export async function sendToGhl(p: Property): Promise<{ ok: boolean; stubbed: bo
   // Opportunity in the chosen pipeline/stage (upsert = one per contact per pipeline).
   let opportunityId: string | undefined;
   let warning: string | undefined;
-  const settings = await getGhlSettings();
+  const saved = await getGhlSettings();
+  const settings = override?.pipelineId && override?.stageId ? override : saved;
   if (id && settings.pipelineId && settings.stageId) {
     const oppRes = await fetch(`${API}/opportunities/upsert`, {
       method: "POST", headers,

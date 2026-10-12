@@ -4,6 +4,7 @@ import type { CourtLink } from "@/lib/court-links";
 import type { LeadStatus, Lien, Note, Property } from "@/lib/types";
 import { DISTRESS_LABEL, LEAD_LABEL, caseTypeLabel, money, num, pct } from "@/lib/format";
 import { ScoreBadge } from "./PropertyRow";
+import SendToGhlDialog from "./SendToGhlDialog";
 
 export default function PropertyCard({
   property: initial, liens, notes: initialNotes, courtLinks, listingLinks, streetViewKey,
@@ -15,6 +16,7 @@ export default function PropertyCard({
   const [note, setNote] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [ghlOpen, setGhlOpen] = useState(false);
 
   async function setStatus(leadStatus: LeadStatus) {
     const r = await fetch(`/api/properties/${p.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ leadStatus }) });
@@ -27,10 +29,10 @@ export default function PropertyCard({
     const d = await r.json();
     if (d.ok) { setNotes([d.note, ...notes]); setNote(""); }
   }
-  async function sendGhl() {
-    if (!confirm("Before any call or text: scrub this contact against the DNC list and TCPA rules. Send to GoHighLevel now?")) return;
+  async function sendGhl(choice: { pipelineId?: string; stageId?: string; remember?: boolean }) {
+    setGhlOpen(false);
     setBusy(true);
-    const r = await fetch(`/api/properties/${p.id}/ghl`, { method: "POST" });
+    const r = await fetch(`/api/properties/${p.id}/ghl`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(choice) });
     const d = await r.json();
     setBusy(false);
     setMsg(d.ok ? (d.stubbed ? "GHL not connected yet — logged locally (add GHL_API_KEY to go live)." : d.warning ?? (d.opportunityId ? "Sent to GoHighLevel: contact + pipeline opportunity." : "Sent to GoHighLevel.")) : `GHL error: ${d.error}`);
@@ -173,10 +175,11 @@ export default function PropertyCard({
           ))}
         </div>
         <div className="grid grid-cols-2 gap-2 mt-3">
-          <button type="button" className="btn btn-dark" disabled={busy || p.isSample} onClick={sendGhl}>Send to GoHighLevel</button>
+          <button type="button" className="btn btn-dark" disabled={busy || p.isSample} onClick={() => setGhlOpen(true)}>Send to GoHighLevel</button>
           <button type="button" className="btn" disabled={busy} onClick={rescore}>Re-score (records)</button>
         </div>
         {msg && <div className="text-sm mt-2">{msg}</div>}
+        {ghlOpen && <SendToGhlDialog address={`${p.address}, ${p.city}`} onCancel={() => setGhlOpen(false)} onSend={sendGhl} />}
       </section>
 
       <section className="card">
