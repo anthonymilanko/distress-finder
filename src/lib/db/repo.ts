@@ -1,4 +1,6 @@
 import type {
+  ColumnMap,
+  ColumnMapping,
   ImportLog,
   Lien,
   Note,
@@ -27,6 +29,12 @@ export interface Repo {
   findByDedupeKey(key: string): Promise<Property | null>;
   upsertProperty(p: Property): Promise<Property>;
   updateProperty(id: string, patch: Partial<Property>): Promise<Property | null>;
+  updateMany(patches: Array<{ id: string; patch: Partial<Property> }>): Promise<number>;
+  listUngeocoded(limit: number): Promise<Property[]>;
+  countUngeocoded(): Promise<number>;
+  // remembered CSV column layouts
+  getColumnMap(signature: string): Promise<ColumnMap | null>;
+  putColumnMap(signature: string, headers: string[], mapping: ColumnMapping): Promise<void>;
   // liens
   listLiens(propertyId: string): Promise<Lien[]>;
   addLiens(liens: Lien[]): Promise<Lien[]>;

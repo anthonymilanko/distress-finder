@@ -1,5 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import type { ImportLog, Lien, Note, Property, PropertyFilters, ScoreResult } from "@/lib/types";
+import type { ColumnMap, ColumnMapping, ImportLog, Lien, Note, Property, PropertyFilters, ScoreResult } from "@/lib/types";
 import { applyFilters, type Repo, type SpendDay } from "./repo";
 
 // ---- row <-> domain mapping (snake_case in Postgres, camelCase in app) ----
@@ -14,7 +14,8 @@ const PROP_COLS: Array<[keyof Property, string]> = [
   ["baths", "baths"], ["sqft", "sqft"], ["lotSqft", "lot_sqft"], ["yearBuilt", "year_built"],
   ["propertyType", "property_type"], ["lastSaleDate", "last_sale_date"], ["lastSalePrice", "last_sale_price"],
   ["estValue", "est_value"], ["mortgageBalance", "mortgage_balance"], ["estEquity", "est_equity"],
-  ["estEquityPct", "est_equity_pct"], ["yearsOwned", "years_owned"], ["distressTypes", "distress_types"],
+  ["estEquityPct", "est_equity_pct"], ["ltvPct", "ltv_pct"], ["yearsOwned", "years_owned"], ["geocodeStatus", "geocode_status"],
+  ["phones", "phones"], ["emails", "emails"], ["tags", "tags"], ["distressTypes", "distress_types"],
   ["leadStatus", "lead_status"], ["distressScore", "distress_score"], ["imageFlags", "image_flags"],
   ["needsReview", "needs_review"], ["photos", "photos"], ["source", "source"], ["sourceDate", "source_date"],
   ["importBatchId", "import_batch_id"], ["isSample", "is_sample"], ["createdAt", "created_at"], ["updatedAt", "updated_at"],
@@ -92,6 +93,30 @@ export class SupabaseRepo implements Repo {
     const { data, error } = await this.sb.from("properties").update({ ...toRow(patch), updated_at: new Date().toISOString() }).eq("id", id).select().maybeSingle();
     this.throwIf(error);
     return data ? fromRow(data) : null;
+  }
+  async updateMany(patches: Array<{ id: string; patch: Partial<Property> }>) {
+    let n = 0;
+    for (const { id, patch } of patches) if (await this.updateProperty(id, patch)) n++;
+    return n;
+  }
+  async listUngeocoded(limit: number) {
+    const { data, error } = await this.sb.from("properties").select("*").is("lat", null).or("geocode_status.is.null,geocode_status.neq.no_match").limit(limit);
+    this.throwIf(error);
+    return (data ?? []).map(fromRow);
+  }
+  async countUngeocoded() {
+    const { count, error } = await this.sb.from("properties").select("id", { count: "exact", head: true }).is("lat", null).or("geocode_status.is.null,geocode_status.neq.no_match");
+    this.throwIf(error);
+    return count ?? 0;
+  }
+  async getColumnMap(signature: string) {
+    const { data, error } = await this.sb.from("column_maps").select("*").eq("signature", signature).maybeSingle();
+    this.throwIf(error);
+    return data ? ({ signature: data.signature, headers: data.headers, mapping: data.mapping, savedAt: data.saved_at } as ColumnMap) : null;
+  }
+  async putColumnMap(signature: string, headers: string[], mapping: ColumnMapping) {
+    const { error } = await this.sb.from("column_maps").upsert({ signature, headers, mapping, saved_at: new Date().toISOString() });
+    this.throwIf(error);
   }
   async listLiens(propertyId: string) {
     const { data, error } = await this.sb.from("liens").select("*").eq("property_id", propertyId).order("filed_date", { ascending: false });

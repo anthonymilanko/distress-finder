@@ -12,6 +12,7 @@ export type DistressType =
   | "probate"
   | "vacant"
   | "code_violation"
+  | "tired_landlord"
   | "other";
 
 export type MatchConfidence = "confirmed" | "possible_match" | "estimate";
@@ -70,6 +71,11 @@ export interface Property {
   mailingState?: string;
   mailingZip?: string;
   absentee?: boolean; // mailing != situs
+  // Contact info from skip-traced exports (scrub against DNC/TCPA before use)
+  phones?: string[];
+  emails?: string[];
+  // Free-form list tags from the source ("Tired Landlord, High Equity", ...)
+  tags?: string[];
   // Characteristics
   beds?: number;
   baths?: number;
@@ -84,7 +90,9 @@ export interface Property {
   mortgageBalance?: number;
   estEquity?: number;
   estEquityPct?: number;
+  ltvPct?: number; // loan-to-value; equity % = 100 - LTV when nothing better exists
   yearsOwned?: number;
+  geocodeStatus?: "pending" | "matched" | "no_match" | "has_coords";
   // Distress (from import or lookup; details live in liens[])
   distressTypes: DistressType[];
   // App state
@@ -122,6 +130,17 @@ export interface ImportLog {
   rowsSkipped: number;
   unmappedColumns: string[];
 }
+
+/** A confirmed column mapping, remembered per header layout. */
+export interface ColumnMap {
+  signature: string; // hash of the normalized header list
+  headers: string[];
+  mapping: ColumnMapping;
+  savedAt: string;
+}
+
+/** canonical field -> source header (string) or headers (string[] for phones/emails). */
+export type ColumnMapping = Record<string, string | string[]>;
 
 export interface PropertyFilters {
   q?: string;

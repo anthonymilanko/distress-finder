@@ -16,6 +16,7 @@ export const DISTRESS_LABEL: Record<DistressType, string> = {
   probate: "Probate / inherited",
   vacant: "Vacant",
   code_violation: "Code violation",
+  tired_landlord: "Tired landlord",
   other: "Other",
 };
 

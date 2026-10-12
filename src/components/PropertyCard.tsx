@@ -109,10 +109,25 @@ export default function PropertyCard({
           <div><div className="label">Owned</div>{p.yearsOwned != null ? `${p.yearsOwned} yrs` : "—"}</div>
           <div><div className="label">Est. value</div>{money(p.estValue)}</div>
           <div><div className="label">Mortgage bal.</div>{money(p.mortgageBalance)}</div>
-          <div><div className="label">Est. equity</div>{money(p.estEquity)} <span className="text-muted">({pct(p.estEquityPct)})</span></div>
+          <div><div className="label">Est. equity</div>{money(p.estEquity)} <span className="text-muted">({pct(p.estEquityPct)}{p.ltvPct != null ? `, LTV ${Math.round(p.ltvPct)}%` : ""})</span></div>
           <div><div className="label">Source</div>{p.source} · {p.sourceDate}</div>
         </div>
         <div className="text-xs text-muted mt-2">Values are estimates until confirmed with title / Register of Deeds.</div>
+        {(p.phones?.length || p.emails?.length) ? (
+          <div className="mt-3 border-t border-line pt-3">
+            <div className="label mb-1">Contact (from skip trace)</div>
+            <div className="flex flex-wrap gap-2 text-sm">
+              {p.phones?.map((ph) => <a key={ph} className="btn" href={`tel:${ph}`}>{ph.replace(/(\d{3})(\d{3})(\d{4})/, "($1) $2-$3")}</a>)}
+              {p.emails?.map((em) => <a key={em} className="btn" href={`mailto:${em}`}>{em}</a>)}
+            </div>
+            <div className="text-xs text-muted mt-2">Scrub against the National DNC list and your internal DNC before calling or texting (TCPA).</div>
+          </div>
+        ) : null}
+        {p.tags?.length ? (
+          <div className="flex flex-wrap gap-1 mt-3">
+            {p.tags.map((t) => <span key={t} className="chip bg-dark/5 border border-line">{t}</span>)}
+          </div>
+        ) : null}
       </section>
 
       <section className="card">

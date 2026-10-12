@@ -1,7 +1,7 @@
 // Pure helpers that turn rows from a BatchLeads-style CSV export (and similar
 // lead-list exports) into Property objects. No I/O, no React.
 
-import type { DistressType, Property } from "./types";
+import type { ColumnMapping, DistressType, Property } from "./types";
 
 // ---------------------------------------------------------------------------
 // Column aliases
@@ -55,11 +55,18 @@ export const COLUMN_ALIASES: Record<string, string[]> = {
   ],
   lat: ["latitude", "lat"],
   lng: ["longitude", "lng", "lon"],
-  distress: ["distress", "lead type", "list type", "tags", "flags", "list name"],
+  distress: ["distress", "lead type", "list type", "tags", "tag names", "tag", "flags", "list name", "lists", "list", "motivation", "lead source", "campaign"],
+  ltvPct: ["ltv", "loan to value", "ltv pct", "ltv current estimated combined", "ltv current estimated", "combined ltv", "estimated ltv", "cltv"],
   preForeclosure: ["pre-foreclosure", "preforeclosure", "pre foreclosure"],
   taxDelinquent: ["tax delinquent", "tax delinquency", "delinquent taxes"],
   vacant: ["vacant", "vacancy"],
   absentee: ["absentee", "absentee owner", "owner occupied"],
+};
+
+/** Headers that hold one of many phone / email values ("Phone 1", "Mobile 2", "Email"). */
+export const MULTI_FIELDS: Record<"phones" | "emails", RegExp> = {
+  phones: /^(phone|phones|mobile|cell|landline|tel|telephone|wireless|contact phone|owner phone)(\s*\d+)?$/,
+  emails: /^(email|emails|e mail|email address|owner email|contact email)(\s*\d+)?$/,
 };
 
 /** Lowercase, strip punctuation, collapse whitespace. "%" becomes " pct". */
@@ -118,12 +125,25 @@ function containsTokens(hay: string[], needle: string[]): boolean {
  * Returns canonical -> original header, plus headers that matched nothing.
  */
 export function mapHeaders(headers: string[]): {
-  mapping: Record<string, string>;
+  mapping: ColumnMapping;
   unmapped: string[];
 } {
-  const mapping: Record<string, string> = {};
+  const mapping: ColumnMapping = {};
   const used = new Set<number>();
   const keys = headers.map((h) => headerKey(h ?? ""));
+
+  // Pass 0: multi-value columns (phones, emails) — collect every match, in order.
+  for (const field of Object.keys(MULTI_FIELDS) as Array<keyof typeof MULTI_FIELDS>) {
+    const hits: string[] = [];
+    headers.forEach((h, i) => {
+      if (used.has(i) || !keys[i]) return;
+      if (MULTI_FIELDS[field].test(keys[i])) {
+        hits.push(h);
+        used.add(i);
+      }
+    });
+    if (hits.length) mapping[field] = hits;
+  }
 
   // Pass 1: exact
   headers.forEach((h, i) => {
@@ -167,6 +187,56 @@ export function mapHeaders(headers: string[]): {
   const unmapped = headers.filter((_, i) => !used.has(i));
   return { mapping, unmapped };
 }
+
+/** Stable id for a header layout, so a confirmed mapping can be reused next time. */
+export function headerSignature(headers: string[]): string {
+  const norm = headers.map((h) => headerKey(h ?? "")).filter(Boolean).sort().join("|");
+  let h = 2166136261;
+  for (let i = 0; i < norm.length; i++) {
+    h ^= norm.charCodeAt(i);
+    h = Math.imul(h, 16777619) >>> 0;
+  }
+  return h.toString(16).padStart(8, "0") + "-" + headers.length;
+}
+
+/** Fields the mapping-review screen can assign a column to. */
+export const MAPPABLE_FIELDS: Array<{ field: string; label: string }> = [
+  { field: "address", label: "Property address (street)" },
+  { field: "city", label: "Property city" },
+  { field: "state", label: "Property state" },
+  { field: "zip", label: "Property ZIP" },
+  { field: "county", label: "County" },
+  { field: "parcel", label: "Parcel / APN" },
+  { field: "ownerName", label: "Owner full name" },
+  { field: "ownerFirst", label: "Owner first name" },
+  { field: "ownerLast", label: "Owner last name" },
+  { field: "mailingAddress", label: "Mailing address" },
+  { field: "mailingCity", label: "Mailing city" },
+  { field: "mailingState", label: "Mailing state" },
+  { field: "mailingZip", label: "Mailing ZIP" },
+  { field: "phones", label: "Phone (one of several)" },
+  { field: "emails", label: "Email (one of several)" },
+  { field: "beds", label: "Beds" },
+  { field: "baths", label: "Baths" },
+  { field: "sqft", label: "Square feet" },
+  { field: "lotSqft", label: "Lot size (sq ft)" },
+  { field: "yearBuilt", label: "Year built" },
+  { field: "propertyType", label: "Property type" },
+  { field: "lastSaleDate", label: "Last sale date" },
+  { field: "lastSalePrice", label: "Last sale price" },
+  { field: "estValue", label: "Estimated value" },
+  { field: "mortgageBalance", label: "Mortgage balance" },
+  { field: "estEquity", label: "Estimated equity ($)" },
+  { field: "estEquityPct", label: "Equity %" },
+  { field: "ltvPct", label: "LTV %" },
+  { field: "lat", label: "Latitude" },
+  { field: "lng", label: "Longitude" },
+  { field: "distress", label: "Tags / list names / distress" },
+  { field: "preForeclosure", label: "Pre-foreclosure flag" },
+  { field: "taxDelinquent", label: "Tax delinquent flag" },
+  { field: "vacant", label: "Vacant flag" },
+  { field: "absentee", label: "Absentee flag" },
+];
 
 // ---------------------------------------------------------------------------
 // Normalizers
@@ -302,7 +372,16 @@ function distressFromText(text: string): DistressType[] {
   }
   if (/vacant/.test(t)) out.push("vacant");
   if (/\bcode\b|violation/.test(t)) out.push("code_violation");
+  if (/tired\s*landlord|landlord|eviction/.test(t)) out.push("tired_landlord");
   return out;
+}
+
+/** Digits only; US 10-digit (or 11 starting with 1) → "2625551234". */
+function normalizePhone(v: string): string | undefined {
+  const d = v.replace(/\D/g, "");
+  if (d.length === 11 && d.startsWith("1")) return d.slice(1);
+  if (d.length === 10) return d;
+  return undefined;
 }
 
 function fullYearsBetween(isoDate: string, now: Date): number {
@@ -329,13 +408,20 @@ function stripUndefined<T extends object>(o: T): T {
 
 export function normalizeRow(
   row: Record<string, string>,
-  mapping: Record<string, string>,
+  mapping: ColumnMapping,
   meta: { source: string; sourceDate: string; importBatchId: string },
 ): Property | null {
   const raw = (field: string): string | undefined => {
     const h = mapping[field];
     if (h === undefined) return undefined;
+    if (Array.isArray(h)) return clean(row[h[0]]);
     return clean(row[h]);
+  };
+  const rawList = (field: string): string[] => {
+    const h = mapping[field];
+    if (h === undefined) return [];
+    const hs = Array.isArray(h) ? h : [h];
+    return hs.map((x) => clean(row[x])).filter((v): v is string => Boolean(v));
   };
 
   const address = raw("address");
@@ -376,7 +462,7 @@ export function normalizeRow(
   const absValue = raw("absentee");
   let explicitAbsentee = false;
   if (absValue !== undefined) {
-    const inverted = absHeader !== undefined && /occupied/i.test(absHeader);
+    const inverted = absHeader !== undefined && /occupied/i.test(Array.isArray(absHeader) ? absHeader[0] : absHeader);
     explicitAbsentee = inverted ? isFalsy(absValue) : isTruthy(absValue);
   }
   const derivedAbsentee =
@@ -398,12 +484,26 @@ export function normalizeRow(
   if (estEquityPct === undefined && estEquity !== undefined && estValue !== undefined && estValue > 0) {
     estEquityPct = Math.round((estEquity / estValue) * 1000) / 10;
   }
+  // LTV is the only equity signal in skip-trace exports: equity % ≈ 100 − LTV.
+  let ltvPct = parseNum(raw("ltvPct"));
+  if (ltvPct !== undefined && ltvPct > 0 && ltvPct <= 1) ltvPct = ltvPct * 100; // 0.25 → 25%
+  if (estEquityPct === undefined && ltvPct !== undefined && ltvPct >= 0 && ltvPct <= 100) {
+    estEquityPct = Math.round((100 - ltvPct) * 10) / 10;
+  }
+  if (estEquity === undefined && estEquityPct !== undefined && estValue !== undefined) {
+    estEquity = Math.round(estValue * (estEquityPct / 100));
+  }
+
+  // Contact + tags
+  const phones = Array.from(new Set(rawList("phones").map(normalizePhone).filter((v): v is string => Boolean(v))));
+  const emails = Array.from(new Set(rawList("emails").map((e) => e.toLowerCase()).filter((e) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e))));
+  const tags = Array.from(new Set(rawList("distress").flatMap((t) => t.split(/[,;|]/)).map((t) => t.trim()).filter(Boolean)));
   const now = new Date();
   const yearsOwned = lastSaleDate ? fullYearsBetween(lastSaleDate, now) : undefined;
 
   // Distress
   const types: DistressType[] = [];
-  const distressText = raw("distress");
+  const distressText = rawList("distress").join(", ");
   if (distressText) types.push(...distressFromText(distressText));
   if (isTruthy(raw("preForeclosure"))) types.push("pre_foreclosure");
   if (isTruthy(raw("taxDelinquent"))) types.push("tax_delinquent");
@@ -449,7 +549,11 @@ export function normalizeRow(
     mortgageBalance,
     estEquity,
     estEquityPct,
+    ltvPct,
     yearsOwned,
+    phones: phones.length ? phones : undefined,
+    emails: emails.length ? emails : undefined,
+    tags: tags.length ? tags : undefined,
     distressTypes,
     leadStatus: "new",
     photos: [],
@@ -496,6 +600,10 @@ export function mergeProperty(existing: Property, incoming: Property): Property 
   }
 
   merged.distressTypes = Array.from(new Set([...existing.distressTypes, ...incoming.distressTypes]));
+  const union = (a?: string[], b?: string[]) => { const u = Array.from(new Set([...(a ?? []), ...(b ?? [])])); return u.length ? u : undefined; };
+  merged.phones = union(existing.phones, incoming.phones);
+  merged.emails = union(existing.emails, incoming.emails);
+  merged.tags = union(existing.tags, incoming.tags);
   merged.updatedAt = incoming.updatedAt;
   merged.sourceDate = incoming.sourceDate;
 

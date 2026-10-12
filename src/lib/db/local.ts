@@ -1,6 +1,6 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import type { ImportLog, Lien, Note, Property, PropertyFilters, ScoreResult } from "@/lib/types";
+import type { ColumnMap, ColumnMapping, ImportLog, Lien, Note, Property, PropertyFilters, ScoreResult } from "@/lib/types";
 import { applyFilters, applyFiltersCounted, type Repo, type SpendDay } from "./repo";
 
 interface DbFile {
@@ -11,6 +11,7 @@ interface DbFile {
   scoreCache: Record<string, ScoreResult>;
   aiSpend: Record<string, SpendDay>;
   lookupCache: Record<string, { payload: unknown; fetchedAt: string }>;
+  columnMaps?: Record<string, ColumnMap>;
 }
 
 const DATA_DIR = path.join(process.cwd(), "data");
@@ -94,6 +95,41 @@ export class LocalRepo implements Repo {
     db.properties[i] = { ...db.properties[i], ...patch, id, updatedAt: new Date().toISOString() };
     await this.save();
     return db.properties[i];
+  }
+  async updateMany(patches: Array<{ id: string; patch: Partial<Property> }>) {
+    const db = await this.load();
+    const idx = new Map(db.properties.map((p, i) => [p.id, i]));
+    const now = new Date().toISOString();
+    let n = 0;
+    for (const { id, patch } of patches) {
+      const i = idx.get(id);
+      if (i === undefined) continue;
+      db.properties[i] = { ...db.properties[i], ...patch, id, updatedAt: now };
+      n++;
+    }
+    if (n) await this.save();
+    return n;
+  }
+  private isUngeocoded(p: Property) {
+    return (p.lat == null || p.lng == null) && p.geocodeStatus !== "no_match" && Boolean(p.address);
+  }
+  async listUngeocoded(limit: number) {
+    const db = await this.load();
+    return db.properties.filter((p) => this.isUngeocoded(p)).slice(0, limit);
+  }
+  async countUngeocoded() {
+    const db = await this.load();
+    return db.properties.filter((p) => this.isUngeocoded(p)).length;
+  }
+  async getColumnMap(signature: string) {
+    const db = await this.load();
+    return db.columnMaps?.[signature] ?? null;
+  }
+  async putColumnMap(signature: string, headers: string[], mapping: ColumnMapping) {
+    const db = await this.load();
+    db.columnMaps ??= {};
+    db.columnMaps[signature] = { signature, headers, mapping, savedAt: new Date().toISOString() };
+    await this.save();
   }
   async listLiens(propertyId: string) {
     const db = await this.load();

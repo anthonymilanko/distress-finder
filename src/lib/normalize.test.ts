@@ -56,7 +56,7 @@ test("mapHeaders maps BatchLeads-style headers and reports unmapped", () => {
   assert.strictEqual(mapping.estEquityPct, "Equity Percent");
   assert.strictEqual(mapping.distress, "Lead Type");
   assert.ok(unmapped.includes("Random Column"));
-  assert.ok(unmapped.includes("Email Address"));
+  assert.deepEqual(mapping.emails, ["Email Address"]);
   assert.ok(!unmapped.includes("APN"));
 });
 
