@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 
 interface Status {
-  storage: "local" | "supabase"; dataDir: string; batchData: boolean; ghl: boolean; claude: boolean; streetView: boolean; extensionToken: boolean;
+  storage: "local" | "supabase"; dataDir: string; dbError?: string; batchData: boolean; ghl: boolean; claude: boolean; streetView: boolean; extensionToken: boolean;
   spend: { day: string; scans: number; costUsd: number; capUsd: number };
 }
 
@@ -17,13 +17,18 @@ function Row({ label, on, hint }: { label: string; on: boolean; hint: string }) 
 
 export default function SettingsPage() {
   const [s, setS] = useState<Status | null>(null);
-  useEffect(() => { fetch("/api/status").then((r) => r.json()).then(setS); }, []);
+  const [err, setErr] = useState<string | null>(null);
+  useEffect(() => {
+    fetch("/api/status").then(async (r) => { const t = await r.text(); try { setS(JSON.parse(t)); } catch { setErr(`Status endpoint returned ${r.status}: ${t.slice(0, 300)}`); } }).catch((e) => setErr(String(e)));
+  }, []);
+  if (err) return <div className="p-4 text-brand text-sm">Couldn&apos;t load status. {err}</div>;
   if (!s) return <div className="p-4 text-muted">Loading…</div>;
   const capPct = Math.min(100, Math.round((s.spend.costUsd / s.spend.capUsd) * 100));
   return (
     <div className="px-4 py-4 md:px-8 md:py-6 max-w-2xl md:mx-0 flex flex-col gap-4">
       <h1 className="text-lg font-semibold">Settings & status <span className="text-sm font-normal text-muted">· version {process.env.NEXT_PUBLIC_APP_VERSION}</span></h1>
 
+      {s.dbError && <div className="card border-2 border-brand bg-brand/5 text-sm"><div className="font-semibold text-brand">Database error</div><div className="mt-1 break-all">{s.dbError}</div><div className="text-xs text-muted mt-2">Check SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in Vercel → Settings → Environment Variables, then Redeploy.</div></div>}
       <section className="card">
         <div className="label mb-1">AI spend today ({s.spend.day})</div>
         <div className="text-2xl font-semibold">${s.spend.costUsd.toFixed(2)} <span className="text-sm text-muted font-normal">of ${s.spend.capUsd.toFixed(2)} cap · {s.spend.scans} scanned today</span></div>

@@ -17,7 +17,7 @@ interface DbFile {
 
 // Your data lives in ~/DistressFinder (override with DF_DATA_DIR), NOT inside the
 // app folder, so replacing the app folder with a new version never touches it.
-export const DATA_DIR = process.env.DF_DATA_DIR ?? path.join(os.homedir(), "DistressFinder");
+export const DATA_DIR = process.env.DF_DATA_DIR ?? (process.env.VERCEL ? path.join(os.tmpdir(), "DistressFinder") : path.join(os.homedir(), "DistressFinder"));
 const DB_PATH = path.join(DATA_DIR, "db.json");
 const SAMPLE_PATH = path.join(process.cwd(), "data", "sample-properties.json");
 const LEGACY_DB_PATH = path.join(process.cwd(), "data", "db.json");

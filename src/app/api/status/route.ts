@@ -6,9 +6,16 @@ import { DAILY_CAP_USD, today } from "@/lib/scoring";
 
 /** Settings page data: which integrations are live and today's AI spend. */
 export async function GET() {
-  const spend = await getRepo().getSpend(today());
+  let spend = { day: today(), scans: 0, costUsd: 0 };
+  let dbError: string | undefined;
+  try {
+    spend = await getRepo().getSpend(today());
+  } catch (e) {
+    dbError = (e as Error).message;
+  }
   return NextResponse.json({
-    ok: true,
+    ok: !dbError,
+    dbError,
     storage: storageMode(),
     dataDir: DATA_DIR,
     batchData: batchDataLive(),
