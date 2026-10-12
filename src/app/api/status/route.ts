@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getRepo, storageMode } from "@/lib/db";
+import { DATA_DIR } from "@/lib/db/local";
 import { batchDataLive } from "@/lib/batchdata";
 import { DAILY_CAP_USD, today } from "@/lib/scoring";
 
@@ -9,6 +10,7 @@ export async function GET() {
   return NextResponse.json({
     ok: true,
     storage: storageMode(),
+    dataDir: DATA_DIR,
     batchData: batchDataLive(),
     ghl: Boolean(process.env.GHL_API_KEY && process.env.GHL_LOCATION_ID),
     claude: Boolean(process.env.ANTHROPIC_API_KEY),

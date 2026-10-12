@@ -83,13 +83,17 @@ export function courtLinks(p: Property, appUrl: string): CourtLink[] {
   return links;
 }
 
-/** Listing-site link-outs: the app never pulls their photos, it opens their page. */
+/** Listing-site link-outs: the app never pulls their photos, it opens their page.
+ *  Zillow resolves an address directly. Redfin and Realtor.com don't expose a
+ *  reliable address URL, so those go through a site-restricted web search that
+ *  lands on the property page in one click. */
 export function listingLinks(p: Property): CourtLink[] {
-  const q = encodeURIComponent(`${p.address}, ${p.city}, ${p.state} ${p.zip}`);
+  const full = `${p.address}, ${p.city}, ${p.state} ${p.zip}`.trim();
   const slug = `${p.address} ${p.city} ${p.state} ${p.zip}`.trim().replace(/[^A-Za-z0-9 ]/g, "").replace(/\s+/g, "-");
   return [
     { label: "Open on Zillow", url: `https://www.zillow.com/homes/${encodeURIComponent(slug)}_rb/` },
-    { label: "Open on Redfin", url: `https://www.redfin.com/search?query=${q}` },
-    { label: "Open on Realtor.com", url: `https://www.realtor.com/realestateandhomes-search?q=${q}` },
+    { label: "Open on Redfin", url: `https://www.google.com/search?q=${encodeURIComponent(`site:redfin.com "${p.address}" ${p.city} ${p.state}`)}&btnI=1` },
+    { label: "Open on Realtor.com", url: `https://www.google.com/search?q=${encodeURIComponent(`site:realtor.com "${p.address}" ${p.city} ${p.state}`)}&btnI=1` },
+    { label: "Google it", url: `https://www.google.com/search?q=${encodeURIComponent(full)}` },
   ];
 }

@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 
 interface Status {
-  storage: "local" | "supabase"; batchData: boolean; ghl: boolean; claude: boolean; streetView: boolean; extensionToken: boolean;
+  storage: "local" | "supabase"; dataDir: string; batchData: boolean; ghl: boolean; claude: boolean; streetView: boolean; extensionToken: boolean;
   spend: { day: string; scans: number; costUsd: number; capUsd: number };
 }
 
@@ -33,7 +33,7 @@ export default function SettingsPage() {
 
       <section className="card">
         <div className="label mb-1">Integrations (set in .env.local, then restart)</div>
-        <Row label={`Storage: ${s.storage}`} on={s.storage === "supabase"} hint="Local JSON file until SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY are set." />
+        <Row label={`Storage: ${s.storage}`} on={s.storage === "supabase"} hint={s.storage === "local" ? `Your data file: ${s.dataDir}/db.json (kept outside the app folder, safe across updates).` : "Supabase"} />
         <Row label="BatchData property lookup" on={s.batchData} hint="BATCHDATA_API_KEY — address search uses mock data without it." />
         <Row label="GoHighLevel" on={s.ghl} hint="GHL_API_KEY + GHL_LOCATION_ID — Send to GHL is stubbed without them." />
         <Row label="Claude (court-page parsing)" on={s.claude} hint="ANTHROPIC_API_KEY — falls back to a regex case-number reader." />

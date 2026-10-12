@@ -1,4 +1,5 @@
 import { promises as fs } from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import type { ColumnMap, ColumnMapping, ImportLog, Lien, Note, Property, PropertyFilters, ScoreResult } from "@/lib/types";
 import { applyFilters, applyFiltersCounted, type Repo, type SpendDay } from "./repo";
@@ -14,9 +15,12 @@ interface DbFile {
   columnMaps?: Record<string, ColumnMap>;
 }
 
-const DATA_DIR = path.join(process.cwd(), "data");
+// Your data lives in ~/DistressFinder (override with DF_DATA_DIR), NOT inside the
+// app folder, so replacing the app folder with a new version never touches it.
+export const DATA_DIR = process.env.DF_DATA_DIR ?? path.join(os.homedir(), "DistressFinder");
 const DB_PATH = path.join(DATA_DIR, "db.json");
-const SAMPLE_PATH = path.join(DATA_DIR, "sample-properties.json");
+const SAMPLE_PATH = path.join(process.cwd(), "data", "sample-properties.json");
+const LEGACY_DB_PATH = path.join(process.cwd(), "data", "db.json");
 
 /**
  * Zero-setup store: one JSON file. Fine for a single user on one machine
@@ -30,7 +34,21 @@ export class LocalRepo implements Repo {
     if (this.cache) return this.cache;
     try {
       this.cache = JSON.parse(await fs.readFile(DB_PATH, "utf8")) as DbFile;
+      return this.cache;
     } catch {
+      /* not there yet */
+    }
+    // One-time move from the old location (data/db.json inside the app folder).
+    try {
+      const legacy = JSON.parse(await fs.readFile(LEGACY_DB_PATH, "utf8")) as DbFile;
+      this.cache = legacy;
+      await this.save();
+      await fs.rename(LEGACY_DB_PATH, LEGACY_DB_PATH + ".migrated").catch(() => {});
+      return this.cache;
+    } catch {
+      /* no legacy file either */
+    }
+    {
       // First run: seed with clearly-fake sample rows so the map isn't empty.
       let sample: Property[] = [];
       try {

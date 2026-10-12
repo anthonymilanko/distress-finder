@@ -4,7 +4,13 @@ Internal web app for TJ Investment Group (wholesaling, WI / FL / TX). Finds dist
 
 The blueprint doc is the spec: *Distress Finder App — Build Blueprint* (Claude Docs).
 
-## Run it
+## Run it (Mac, no terminal)
+
+Double-click **Start Distress Finder.command**. It installs what it needs the first time, opens http://localhost:3000, and keeps running in that window (close it to stop). If macOS blocks it the first time: right-click → Open.
+
+**Updating:** save the new `distress-finder.zip` to Downloads, double-click **Update Distress Finder.command**, then Start again. Your data lives in `~/DistressFinder/db.json`, outside the app folder, so updates never touch it.
+
+Terminal equivalent:
 
 ```bash
 npm install
@@ -30,7 +36,7 @@ With no keys set, the app runs on a local JSON file (`data/db.json`, seeded with
 
 ## Storage
 
-- **Local (default):** `data/db.json`. Good for one user on one machine.
+- **Local (default):** `~/DistressFinder/db.json` (override with `DF_DATA_DIR`). Good for one user on one machine.
 - **Supabase:** run `supabase/migrations/0001_init.sql`, then set `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY`. The app switches automatically.
 
 ## Keys (all optional) — see `.env.example`
