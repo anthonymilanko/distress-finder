@@ -69,6 +69,10 @@ export class SupabaseRepo implements Repo {
     this.throwIf(error);
     return applyFilters((data ?? []).map(fromRow), filters);
   }
+  async countProperties(filters: PropertyFilters): Promise<number> {
+    const rows = await this.listProperties({ ...filters, limit: 10000 });
+    return rows.length;
+  }
   async getProperty(id: string) {
     const { data, error } = await this.sb.from("properties").select("*").eq("id", id).maybeSingle();
     this.throwIf(error);

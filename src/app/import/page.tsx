@@ -1,11 +1,12 @@
 "use client";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import type { ImportLog } from "@/lib/types";
 
 export default function ImportPage() {
   const [logs, setLogs] = useState<ImportLog[]>([]);
   const [busy, setBusy] = useState(false);
-  const [result, setResult] = useState<string | null>(null);
+  const [result, setResult] = useState<{ ok: boolean; text: string } | null>(null);
 
   const load = () => fetch("/api/import").then((r) => r.json()).then((d) => setLogs(d.logs ?? []));
   useEffect(() => { load(); }, []);
@@ -19,9 +20,9 @@ export default function ImportPage() {
     setBusy(false);
     if (d.ok) {
       const l: ImportLog = d.log;
-      setResult(`${l.rowsIn} rows in → ${l.rowsNew} new, ${l.rowsUpdated} updated, ${l.rowsDeduped} duplicates, ${l.rowsSkipped} skipped (no address).${l.unmappedColumns.length ? ` Unmapped columns: ${l.unmappedColumns.join(", ")}` : ""}`);
+      setResult({ ok: true, text: `Imported. ${l.rowsIn} rows in → ${l.rowsNew} new, ${l.rowsUpdated} updated, ${l.rowsDeduped} duplicates, ${l.rowsSkipped} skipped (no address).${l.unmappedColumns.length ? ` Unmapped columns: ${l.unmappedColumns.join(", ")}` : ""}` });
       load();
-    } else setResult(`Import failed: ${d.error}${d.headers ? ` — headers seen: ${d.headers.join(", ")}` : ""}`);
+    } else setResult({ ok: false, text: `Import failed: ${d.error}${d.headers ? ` — headers seen: ${d.headers.join(", ")}` : ""}` });
   }
 
   return (
@@ -33,7 +34,13 @@ export default function ImportPage() {
         <div className="text-2xl">📥</div>
         <div className="font-medium">{busy ? "Importing…" : "Tap to choose a CSV"}</div>
       </label>
-      {result && <div className="text-sm card">{result}</div>}
+      {result && (
+        <div className={`card text-sm border-2 ${result.ok ? "border-cool bg-cool/5" : "border-brand bg-brand/5"}`}>
+          <div className={`font-semibold ${result.ok ? "text-cool" : "text-brand"}`}>{result.ok ? "✓ Import complete" : "✗ Import failed"}</div>
+          <div className="mt-1">{result.text}</div>
+          {result.ok && <Link href="/" className="btn btn-brand mt-3">View on map</Link>}
+        </div>
+      )}
       <section>
         <div className="label mb-2">Import history</div>
         {logs.length === 0 ? <div className="text-sm text-muted">No imports yet.</div> : (

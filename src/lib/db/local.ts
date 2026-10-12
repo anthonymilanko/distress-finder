@@ -1,7 +1,7 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import type { ImportLog, Lien, Note, Property, PropertyFilters, ScoreResult } from "@/lib/types";
-import { applyFilters, type Repo, type SpendDay } from "./repo";
+import { applyFilters, applyFiltersCounted, type Repo, type SpendDay } from "./repo";
 
 interface DbFile {
   properties: Property[];
@@ -66,6 +66,10 @@ export class LocalRepo implements Repo {
   async listProperties(filters: PropertyFilters): Promise<Property[]> {
     const db = await this.load();
     return applyFilters(db.properties, filters);
+  }
+  async countProperties(filters: PropertyFilters): Promise<number> {
+    const db = await this.load();
+    return applyFiltersCounted(db.properties, filters).total;
   }
   async getProperty(id: string) {
     const db = await this.load();

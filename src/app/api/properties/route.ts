@@ -17,6 +17,7 @@ export async function GET(request: Request) {
     minScore: n("minScore"),
     limit: n("limit"),
   };
-  const rows = await getRepo().listProperties(filters);
-  return NextResponse.json({ ok: true, count: rows.length, properties: rows });
+  const repo = getRepo();
+  const [rows, total] = await Promise.all([repo.listProperties(filters), repo.countProperties(filters)]);
+  return NextResponse.json({ ok: true, count: rows.length, total, properties: rows });
 }

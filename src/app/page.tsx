@@ -10,6 +10,7 @@ const MapView = dynamic(() => import("@/components/MapView"), { ssr: false, load
 export default function HomePage() {
   const [filters, setFilters] = useState<PropertyFilters>({});
   const [rows, setRows] = useState<Property[]>([]);
+  const [total, setTotal] = useState(0);
   const [selected, setSelected] = useState<string | null>(null);
   const [view, setView] = useState<"map" | "list">("map");
   const [loading, setLoading] = useState(true);
@@ -18,7 +19,7 @@ export default function HomePage() {
     const sp = new URLSearchParams();
     Object.entries(filters).forEach(([k, v]) => { if (v !== undefined && v !== false && v !== "") sp.set(k, v === true ? "1" : String(v)); });
     let cancelled = false;
-    fetch(`/api/properties?${sp}`).then((r) => r.json()).then((d) => { if (!cancelled) { setRows(d.properties ?? []); setLoading(false); } });
+    fetch(`/api/properties?${sp}`).then((r) => r.json()).then((d) => { if (!cancelled) { setRows(d.properties ?? []); setTotal(d.total ?? d.count ?? 0); setLoading(false); } });
     return () => { cancelled = true; };
   }, [filters]);
 
@@ -29,7 +30,7 @@ export default function HomePage() {
     <div className="flex flex-col h-[calc(100dvh-7.5rem)] md:h-dvh">
       <Filters value={filters} onChange={(f) => { setFilters(f); setSelected(null); setLoading(true); }} />
       <div className="px-4 pb-2 flex items-center justify-between text-sm text-muted">
-        <span>{loading ? "Loading…" : `${rows.length} properties`}</span>
+        <span>{loading ? "Loading…" : total > rows.length ? `Showing top ${rows.length} of ${total.toLocaleString()} — add filters to narrow` : `${rows.length} properties`}</span>
         <div className="inline-flex rounded-lg border border-line overflow-hidden md:hidden">
           <button type="button" className={`px-3 py-1 ${view === "map" ? "bg-dark text-white" : "bg-surface"}`} onClick={() => setView("map")}>Map</button>
           <button type="button" className={`px-3 py-1 ${view === "list" ? "bg-dark text-white" : "bg-surface"}`} onClick={() => setView("list")}>List</button>

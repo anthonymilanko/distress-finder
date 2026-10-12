@@ -22,6 +22,7 @@ export interface SpendDay {
 export interface Repo {
   // properties
   listProperties(filters: PropertyFilters): Promise<Property[]>;
+  countProperties(filters: PropertyFilters): Promise<number>;
   getProperty(id: string): Promise<Property | null>;
   findByDedupeKey(key: string): Promise<Property | null>;
   upsertProperty(p: Property): Promise<Property>;
@@ -64,4 +65,10 @@ export function applyFilters(all: Property[], f: PropertyFilters): Property[] {
   });
   rows = rows.sort((a, b) => (b.distressScore ?? 0) - (a.distressScore ?? 0) || (b.estEquityPct ?? 0) - (a.estEquityPct ?? 0));
   return rows.slice(0, f.limit ?? 500);
+}
+
+/** Same as applyFilters but also reports how many matched before the limit. */
+export function applyFiltersCounted(all: Property[], f: PropertyFilters): { rows: Property[]; total: number } {
+  const rows = applyFilters(all, { ...f, limit: Number.MAX_SAFE_INTEGER });
+  return { rows: rows.slice(0, f.limit ?? 500), total: rows.length };
 }

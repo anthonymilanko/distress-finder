@@ -23,6 +23,11 @@ const STYLE: maplibregl.StyleSpecification = {
   layers: [{ id: "osm", type: "raster", source: "osm" }],
 };
 
+// Next.js dev (Turbopack) can't resolve MapLibre's bundled worker URL, so we
+// serve a copy from /public. Keep it in sync when maplibre-gl is upgraded:
+//   cp node_modules/maplibre-gl/dist/maplibre-gl-worker.mjs public/
+if (typeof window !== "undefined") maplibregl.setWorkerUrl("/maplibre-gl-worker.mjs");
+
 const TONE_COLOR = { hot: "#9e0000", warm: "#b86e00", cool: "#2f6f4e", none: "#05150e" } as const;
 
 export default function MapView({
