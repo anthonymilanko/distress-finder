@@ -72,6 +72,13 @@ export async function geocodeBatch(rows: Array<Pick<Property, "id" | "address" |
   form.append("addressFile", new Blob([buildBatchCsv(rows)], { type: "text/csv" }), "addresses.csv");
   form.append("benchmark", "Public_AR_Current");
   const res = await fetch(CENSUS_BATCH_URL, { method: "POST", body: form, signal: AbortSignal.timeout(10 * 60_000) });
-  if (!res.ok) throw new Error(`Census geocoder HTTP ${res.status}: ${(await res.text()).slice(0, 200)}`);
-  return parseBatchResponse(await res.text());
+  const text = await res.text();
+  if (!res.ok) throw new Error(`Census geocoder HTTP ${res.status}: ${text.slice(0, 300)}`);
+  const hits = parseBatchResponse(text);
+  // A non-empty batch that comes back with nothing recognizable is a failure
+  // (HTML error page, proxy interstitial, format change), never "no match".
+  if (hits.length === 0 || !text.includes('"')) {
+    throw new Error(`Census geocoder returned no usable rows. Response began: ${text.slice(0, 300).replace(/\s+/g, " ")}`);
+  }
+  return hits;
 }

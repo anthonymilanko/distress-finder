@@ -42,12 +42,12 @@ export default function ImportPage() {
   const [remember, setRemember] = useState(true);
   const [busy, setBusy] = useState<string | null>(null);
   const [result, setResult] = useState<{ ok: boolean; text: string } | null>(null);
-  const [geo, setGeo] = useState<{ remaining: number; matched: number; noMatch: number; running: boolean; error?: string } | null>(null);
+  const [geo, setGeo] = useState<{ remaining: number; matched: number; noMatch: number; running: boolean; error?: string; unmatchedOnFile?: number } | null>(null);
 
   const load = () => fetch("/api/import").then((r) => r.json()).then((d) => setLogs(d.logs ?? []));
   useEffect(() => {
     load();
-    fetch("/api/geocode").then((r) => r.json()).then((d) => setGeo({ remaining: d.remaining ?? 0, matched: 0, noMatch: 0, running: false }));
+    fetch("/api/geocode").then((r) => r.json()).then((d) => setGeo({ remaining: d.remaining ?? 0, matched: 0, noMatch: 0, running: false, unmatchedOnFile: d.noMatch ?? 0 }));
   }, []);
 
   async function choose(f: File) {
@@ -80,12 +80,17 @@ export default function ImportPage() {
     setGeo({ remaining: start, matched: 0, noMatch: 0, running: true });
     let matched = 0, noMatch = 0;
     for (let i = 0; i < 50; i++) {
-      const d = await fetch("/api/geocode", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ limit: 2000 }) }).then((r) => r.json());
+      const d = await fetch("/api/geocode", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ limit: 1000 }) }).then((r) => r.json());
       if (!d.ok) { setGeo({ remaining: start, matched, noMatch, running: false, error: d.error }); return; }
       matched += d.matched; noMatch += d.noMatch;
       setGeo({ remaining: d.remaining, matched, noMatch, running: d.remaining > 0 });
       if (d.remaining === 0 || d.processed === 0) break;
     }
+  }
+
+  async function retryUnmatched() {
+    const d = await fetch("/api/geocode", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reset: true }) }).then((r) => r.json());
+    if (d.ok) runGeocode(d.remaining);
   }
 
   const fieldLabel = (f: string) => preview?.fields.find((x) => x.field === f)?.label ?? f;
@@ -151,7 +156,7 @@ export default function ImportPage() {
         </div>
       )}
 
-      {geo && (geo.running || geo.remaining > 0 || geo.matched > 0 || geo.error) && (
+      {geo && (geo.running || geo.remaining > 0 || geo.matched > 0 || geo.error || (geo.unmatchedOnFile ?? 0) > 0) && (
         <section className="card text-sm">
           <div className="label mb-1">Map pins (geocoding)</div>
           {geo.running ? (
@@ -160,8 +165,10 @@ export default function ImportPage() {
             <div className="text-brand">{geo.error} <button type="button" className="btn ml-2" onClick={() => runGeocode()}>Retry</button></div>
           ) : geo.remaining > 0 ? (
             <div className="flex items-center gap-3 flex-wrap">{geo.remaining.toLocaleString()} properties have no map pin yet. <button type="button" className="btn btn-dark" onClick={() => runGeocode()}>Find coordinates</button></div>
-          ) : (
+          ) : geo.matched > 0 || geo.noMatch > 0 ? (
             <div>Done: {geo.matched.toLocaleString()} placed on the map{geo.noMatch ? `, ${geo.noMatch.toLocaleString()} couldn't be matched (they're still in the list)` : ""}.</div>
+          ) : (
+            <div className="flex items-center gap-3 flex-wrap">{(geo.unmatchedOnFile ?? 0).toLocaleString()} properties were marked unmatched earlier. <button type="button" className="btn btn-dark" onClick={retryUnmatched}>Retry those</button></div>
           )}
         </section>
       )}

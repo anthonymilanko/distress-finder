@@ -11,9 +11,14 @@ import type { Property } from "@/lib/types";
  * them later).
  */
 export async function POST(req: Request) {
-  const body = (await req.json().catch(() => ({}))) as { limit?: number };
-  const limit = Math.min(Math.max(1, body.limit ?? 2000), CENSUS_BATCH_LIMIT);
+  const body = (await req.json().catch(() => ({}))) as { limit?: number; reset?: boolean };
   const repo = getRepo();
+  if (body.reset) {
+    // Clear "no_match" so those rows are tried again (after a failed run).
+    const reset = await repo.resetNoMatch();
+    return NextResponse.json({ ok: true, reset, remaining: await repo.countUngeocoded() });
+  }
+  const limit = Math.min(Math.max(1, body.limit ?? 1000), CENSUS_BATCH_LIMIT);
   const rows = await repo.listUngeocoded(limit);
   if (!rows.length) return NextResponse.json({ ok: true, processed: 0, matched: 0, noMatch: 0, remaining: 0 });
 
@@ -26,6 +31,12 @@ export async function POST(req: Request) {
     hits = await geocodeBatch(usable);
   } catch (e) {
     return NextResponse.json({ ok: false, error: `Geocoder unavailable: ${(e as Error).message}` }, { status: 502 });
+  }
+
+  // Sanity check: if nothing in a sizeable batch matched, something's wrong upstream.
+  const matchedCount = hits.filter((h) => h.matched).length;
+  if (usable.length >= 25 && matchedCount === 0) {
+    return NextResponse.json({ ok: false, error: `Geocoder answered but matched 0 of ${usable.length} addresses — not saving. Try again; if it repeats, send Claude this message.` }, { status: 502 });
   }
 
   const patches: Array<{ id: string; patch: Partial<Property> }> = [];
@@ -50,5 +61,6 @@ export async function POST(req: Request) {
 }
 
 export async function GET() {
-  return NextResponse.json({ ok: true, remaining: await getRepo().countUngeocoded() });
+  const repo = getRepo();
+  return NextResponse.json({ ok: true, remaining: await repo.countUngeocoded(), noMatch: await repo.countNoMatch() });
 }

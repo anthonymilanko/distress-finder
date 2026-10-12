@@ -32,6 +32,8 @@ export interface Repo {
   updateMany(patches: Array<{ id: string; patch: Partial<Property> }>): Promise<number>;
   listUngeocoded(limit: number): Promise<Property[]>;
   countUngeocoded(): Promise<number>;
+  countNoMatch(): Promise<number>;
+  resetNoMatch(): Promise<number>;
   // remembered CSV column layouts
   getColumnMap(signature: string): Promise<ColumnMap | null>;
   putColumnMap(signature: string, headers: string[], mapping: ColumnMapping): Promise<void>;

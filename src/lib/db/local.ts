@@ -139,6 +139,17 @@ export class LocalRepo implements Repo {
     const db = await this.load();
     return db.properties.filter((p) => this.isUngeocoded(p)).length;
   }
+  async countNoMatch() {
+    const db = await this.load();
+    return db.properties.filter((p) => p.geocodeStatus === "no_match").length;
+  }
+  async resetNoMatch() {
+    const db = await this.load();
+    let n = 0;
+    for (const p of db.properties) if (p.geocodeStatus === "no_match") { p.geocodeStatus = "pending"; n++; }
+    if (n) await this.save();
+    return n;
+  }
   async getColumnMap(signature: string) {
     const db = await this.load();
     return db.columnMaps?.[signature] ?? null;

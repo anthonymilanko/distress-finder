@@ -109,6 +109,16 @@ export class SupabaseRepo implements Repo {
     this.throwIf(error);
     return count ?? 0;
   }
+  async countNoMatch() {
+    const { count, error } = await this.sb.from("properties").select("id", { count: "exact", head: true }).eq("geocode_status", "no_match");
+    this.throwIf(error);
+    return count ?? 0;
+  }
+  async resetNoMatch() {
+    const { data, error } = await this.sb.from("properties").update({ geocode_status: "pending" }).eq("geocode_status", "no_match").select("id");
+    this.throwIf(error);
+    return data?.length ?? 0;
+  }
   async getColumnMap(signature: string) {
     const { data, error } = await this.sb.from("column_maps").select("*").eq("signature", signature).maybeSingle();
     this.throwIf(error);
