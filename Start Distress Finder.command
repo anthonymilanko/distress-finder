@@ -10,9 +10,15 @@ if ! command -v node >/dev/null 2>&1; then
   read -r -p "Press Enter to close."; exit 1
 fi
 
+# Seamless updates: if this folder is linked to a Git remote, pull the latest.
+if [ -d .git ] && git remote get-url origin >/dev/null 2>&1; then
+  echo "Checking for updates..."
+  git pull --ff-only --quiet && echo "Up to date." || echo "(Couldn't pull updates; running what's here.)"
+fi
+
 # Install dependencies the first time, or whenever package.json changed.
-if [ ! -d node_modules ] || [ package.json -nt node_modules/.installed ]; then
-  echo "Installing dependencies (one-time, about a minute)..."
+if [ ! -d node_modules ] || [ package.json -nt node_modules/.installed ] || [ ! -f node_modules/.installed ]; then
+  echo "Installing dependencies (about a minute)..."
   npm install --no-audit --no-fund || { read -r -p "Install failed. Press Enter to close."; exit 1; }
   touch node_modules/.installed
 fi
@@ -21,7 +27,7 @@ fi
 lsof -ti tcp:3000 | xargs kill 2>/dev/null
 
 echo
-echo "Starting Distress Finder at http://localhost:3000"
+echo "Distress Finder $(cat VERSION 2>/dev/null) — http://localhost:3000"
 echo "Your data is kept in ~/DistressFinder (safe across app updates)."
 echo "Keep this window open while you use the app. Close it to stop."
 echo

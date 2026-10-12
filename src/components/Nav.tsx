@@ -46,7 +46,7 @@ export default function Nav() {
             </li>
           ))}
         </ul>
-        <div className="mt-auto p-4 text-[11px] text-white/50">Phase 1 prototype</div>
+        <div className="mt-auto p-4 text-[11px] text-white/50">Version {process.env.NEXT_PUBLIC_APP_VERSION}</div>
       </aside>
     </>
   );

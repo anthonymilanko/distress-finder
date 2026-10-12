@@ -1,6 +1,11 @@
 import type { NextConfig } from "next";
+import { readFileSync } from "node:fs";
+
+let version = "dev";
+try { version = readFileSync("VERSION", "utf8").trim(); } catch { /* no VERSION file */ }
 
 const nextConfig: NextConfig = {
+  env: { NEXT_PUBLIC_APP_VERSION: version },
   // Phase 1 prototype: request-time rendering everywhere, no partial prerendering.
   cacheComponents: false,
   turbopack: {

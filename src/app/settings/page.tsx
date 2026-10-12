@@ -22,7 +22,7 @@ export default function SettingsPage() {
   const capPct = Math.min(100, Math.round((s.spend.costUsd / s.spend.capUsd) * 100));
   return (
     <div className="px-4 py-4 md:px-8 md:py-6 max-w-2xl md:mx-0 flex flex-col gap-4">
-      <h1 className="text-lg font-semibold">Settings & status</h1>
+      <h1 className="text-lg font-semibold">Settings & status <span className="text-sm font-normal text-muted">· version {process.env.NEXT_PUBLIC_APP_VERSION}</span></h1>
 
       <section className="card">
         <div className="label mb-1">AI spend today ({s.spend.day})</div>

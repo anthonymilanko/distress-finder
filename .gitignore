@@ -44,3 +44,4 @@ data/db.json.tmp
 .env.local
 node_modules/.installed
 data/db.json.migrated
+VERSION
