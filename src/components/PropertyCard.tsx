@@ -46,6 +46,15 @@ export default function PropertyCard({
     setMsg(d.ok ? (d.stubbed ? "GHL not connected yet — logged locally (add GHL_API_KEY to go live)." : d.warning ?? (d.opportunityId ? "Sent to GoHighLevel: contact + pipeline opportunity." : "Sent to GoHighLevel.")) : `GHL error: ${d.error}`);
     if (d.ok && p.leadStatus === "new") setP({ ...p, leadStatus: "lead" });
   }
+  async function refresh() {
+    if (!confirm("Re-pull this property from BatchData? This costs one lookup and overwrites the property data (your status, notes and score are kept).")) return;
+    setBusy(true);
+    const r = await fetch(`/api/properties/${p.id}/refresh`, { method: "POST" });
+    const d = await r.json();
+    setBusy(false);
+    if (d.ok) { setP(d.property); setMsg("Refreshed from BatchData."); }
+    else setMsg(`Refresh failed: ${d.error}`);
+  }
   async function rescore() {
     setBusy(true);
     const r = await fetch(`/api/properties/${p.id}/score`, { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
@@ -88,6 +97,7 @@ export default function PropertyCard({
           <div className="flex gap-2">
             <button type="button" className="btn btn-brand" disabled={busy || p.isSample} onClick={() => setGhlOpen(true)}>Send to GoHighLevel</button>
             <button type="button" className="btn" disabled={busy} onClick={rescore}>Re-score</button>
+            {!p.isSample && <button type="button" className="btn" disabled={busy} onClick={refresh} title="Re-pull from BatchData (one lookup)">Refresh data</button>}
           </div>
           {msg && <div className="text-[13px] text-muted md:text-right max-w-sm">{msg}</div>}
         </div>

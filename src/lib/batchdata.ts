@@ -90,10 +90,11 @@ export interface LookupResult {
   costUsd: number;
 }
 
-export async function lookupByAddress(addr: ParsedAddress): Promise<LookupResult> {
+/** @param opts.force  skip the per-address cache (a paid re-pull). @param opts.propertyId  key the raw response to an existing property. */
+export async function lookupByAddress(addr: ParsedAddress, opts: { force?: boolean; propertyId?: string } = {}): Promise<LookupResult> {
   const repo = getRepo();
   const cacheKey = "bd:" + normalizeAddressKey(addr.street, addr.zip) + "|" + (addr.city ?? "").toUpperCase();
-  const cached = await repo.getLookup<Property>(cacheKey);
+  const cached = opts.force ? null : await repo.getLookup<Property>(cacheKey);
   if (cached) return { property: cached, cached: true, live: Boolean(KEY), costUsd: 0 };
 
   let property: Property;
@@ -107,6 +108,7 @@ export async function lookupByAddress(addr: ParsedAddress): Promise<LookupResult
     const raw = data.results?.properties?.[0];
     if (!raw) throw new Error("No property found for that address.");
     property = mapLookup(raw, addr);
+    if (opts.propertyId) property.id = opts.propertyId;
     // Keep the untouched response so the card can show "what BatchData said" and mapping can be tuned.
     await repo.putLookup(`bd:raw:${property.id}`, raw);
   }
