@@ -14,7 +14,10 @@ import { getRepo } from "@/lib/db";
  * is named differently on your plan. Nothing here scrapes a listing site.
  */
 
-const BASE = process.env.BATCHDATA_BASE_URL ?? "https://api.batchdata.com/api/v1";
+const BASE = (process.env.BATCHDATA_BASE_URL ?? "https://api.batchdata.com/api/v1").replace(/\/+$/, "");
+// BatchData v1 paths. Override if your account's docs show different ones.
+const LOOKUP_PATH = process.env.BATCHDATA_LOOKUP_PATH ?? "/property/lookup/all-attributes";
+const AUTOCOMPLETE_PATH = process.env.BATCHDATA_AUTOCOMPLETE_PATH ?? "/address/autocomplete";
 const KEY = process.env.BATCHDATA_API_KEY;
 const EST_COST_PER_LOOKUP = Number(process.env.BATCHDATA_COST_PER_LOOKUP ?? "0.01");
 
@@ -58,7 +61,12 @@ async function call<T>(path: string, body: unknown): Promise<T> {
     headers: { "Content-Type": "application/json", Accept: "application/json", Authorization: `Bearer ${KEY}` },
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(`BatchData ${path} → HTTP ${res.status}: ${(await res.text()).slice(0, 300)}`);
+  if (!res.ok) {
+    const text = (await res.text()).slice(0, 300);
+    const hint = res.status === 404 ? " (endpoint path not found — check BATCHDATA_LOOKUP_PATH / BATCHDATA_BASE_URL against developer.batchdata.com)"
+      : res.status === 401 || res.status === 403 ? " (key rejected — confirm BATCHDATA_API_KEY and that Property Lookup is enabled on your account)" : "";
+    throw new Error(`BatchData ${path} → HTTP ${res.status}${hint}: ${text}`);
+  }
   return (await res.json()) as T;
 }
 
@@ -67,7 +75,7 @@ export async function autocomplete(query: string): Promise<AddressSuggestion[]> 
   if (query.trim().length < 3) return [];
   if (!KEY) return mockAutocomplete(query);
   type Resp = { results?: { addresses?: Array<{ street?: string; city?: string; state?: string; zip?: string }> } };
-  const data = await call<Resp>("/address/autocomplete", { searchCriteria: { query }, options: { take: 8 } });
+  const data = await call<Resp>(AUTOCOMPLETE_PATH, { searchCriteria: { query }, options: { take: 8 } });
   return (data.results?.addresses ?? []).map((a) => ({
     street: a.street ?? "", city: a.city ?? "", state: a.state ?? "", zip: a.zip ?? "",
     label: `${a.street ?? ""}, ${a.city ?? ""}, ${a.state ?? ""} ${a.zip ?? ""}`.replace(/\s+/g, " ").trim(),
@@ -93,9 +101,8 @@ export async function lookupByAddress(addr: ParsedAddress): Promise<LookupResult
     property = mockLookup(addr);
   } else {
     type Resp = { results?: { properties?: Array<Record<string, unknown>> } };
-    const data = await call<Resp>("/property/lookup", {
+    const data = await call<Resp>(LOOKUP_PATH, {
       requests: [{ address: { street: addr.street, city: addr.city, state: addr.state, zip: addr.zip } }],
-      options: { skipTrace: false },
     });
     const raw = data.results?.properties?.[0];
     if (!raw) throw new Error("No property found for that address.");
