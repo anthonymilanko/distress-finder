@@ -27,7 +27,7 @@ export default function PropertyCard({
     if (!note.trim()) return;
     const r = await fetch(`/api/properties/${p.id}/notes`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ body: note }) });
     const d = await r.json();
-    if (d.ok) { setNotes([d.note, ...notes]); setNote(""); }
+    if (d.ok) { setNotes([d.note, ...notes]); setNote(""); if (d.syncedToGhl) setMsg("Note added here and on the GHL contact."); }
   }
   async function sendGhl(choice: { pipelineId?: string; stageId?: string; remember?: boolean }) {
     setGhlOpen(false);

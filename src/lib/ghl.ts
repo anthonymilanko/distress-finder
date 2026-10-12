@@ -23,6 +23,18 @@ export interface GhlSettings {
   stageName?: string;
 }
 const SETTINGS_KEY = "settings:ghl";
+const contactKey = (propertyId: string) => `ghl:contact:${propertyId}`;
+
+export async function getGhlContactId(propertyId: string): Promise<string | undefined> {
+  return (await getRepo().getLookup<{ id: string }>(contactKey(propertyId)))?.id;
+}
+
+/** Post one note to an existing GHL contact. Returns false if GHL isn't configured. */
+export async function addGhlNote(contactId: string, body: string): Promise<boolean> {
+  if (!ghlConfigured()) return false;
+  const res = await fetch(`${API}/contacts/${contactId}/notes`, { method: "POST", headers: ghlHeaders(), body: JSON.stringify({ body }) });
+  return res.ok;
+}
 
 export const ghlConfigured = () => Boolean(process.env.GHL_API_KEY?.trim() && process.env.GHL_LOCATION_ID?.trim());
 
@@ -75,8 +87,11 @@ export async function sendToGhl(p: Property, override?: { pipelineId?: string; s
   const data = (await res.json()) as { contact?: { id?: string } };
   const id = data.contact?.id;
 
-  // Attach the property facts as a note (custom fields vary per account; a note always works).
+  // Attach the property facts + any notes written in the app (custom fields vary per account; a note always works).
   if (id) {
+    const repo = getRepo();
+    await repo.putLookup(contactKey(p.id), { id });
+    const appNotes = await repo.listNotes(p.id);
     const lines = [
       `Property: ${p.address}, ${p.city}, ${p.state} ${p.zip}`,
       p.parcel ? `Parcel: ${p.parcel}` : null,
@@ -89,6 +104,10 @@ export async function sendToGhl(p: Property, override?: { pipelineId?: string; s
       p.emails?.length && p.emails.length > 1 ? `Other emails: ${p.emails.slice(1).join(", ")}` : null,
       `Source: ${p.source} (${p.sourceDate})`,
     ].filter(Boolean);
+    if (appNotes.length) {
+      lines.push("", "Notes from Distress Finder:");
+      for (const n of [...appNotes].reverse()) lines.push(`• ${new Date(n.createdAt).toLocaleDateString("en-US")}: ${n.body}`);
+    }
     await fetch(`${API}/contacts/${id}/notes`, { method: "POST", headers, body: JSON.stringify({ body: lines.join("\n") }) }).catch(() => {});
   }
 
