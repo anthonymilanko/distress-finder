@@ -28,7 +28,7 @@ const STYLE: maplibregl.StyleSpecification = {
 //   cp node_modules/maplibre-gl/dist/maplibre-gl-worker.mjs public/
 if (typeof window !== "undefined") maplibregl.setWorkerUrl("/maplibre-gl-worker.mjs");
 
-const TONE_COLOR = { hot: "#9e0000", warm: "#b86e00", cool: "#2f6f4e", none: "#05150e" } as const;
+const TONE_COLOR = { hot: "#e4572e", warm: "#d99a2b", cool: "#3c7a5a", none: "#13161c" } as const;
 
 export default function MapView({
   properties,
@@ -66,10 +66,11 @@ export default function MapView({
       if (p.lat == null || p.lng == null) continue;
       const dot = document.createElement("button");
       dot.type = "button";
-      dot.title = p.address;
+      dot.title = `${p.address}${p.distressScore != null ? ` · score ${p.distressScore}` : ""}`;
       const tone = scoreTone(p.distressScore);
-      const size = p.id === selectedId ? 22 : 16;
-      dot.style.cssText = `width:${size}px;height:${size}px;border-radius:50%;background:${TONE_COLOR[tone]};border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4);cursor:pointer;`;
+      dot.className = `ol-marker${p.id === selectedId ? " is-selected" : ""}`;
+      dot.style.background = TONE_COLOR[tone];
+      dot.textContent = p.distressScore != null ? String(p.distressScore) : "";
       dot.onclick = () => onSelect(p.id);
       const mk = new maplibregl.Marker({ element: dot }).setLngLat([p.lng, p.lat]).addTo(m);
       markers.current.set(p.id, mk);

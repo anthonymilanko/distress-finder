@@ -97,14 +97,16 @@ export default function ImportPage() {
 
   return (
     <div className="px-4 py-4 md:px-8 md:py-6 max-w-4xl md:mx-0 flex flex-col gap-4">
-      <h1 className="text-lg font-semibold">Import a list</h1>
+      <h1 className="text-2xl font-extrabold tracking-tight">Import a list</h1>
       <p className="text-sm text-muted">Any CSV with an address column: BatchLeads, skip-trace results, county exports. The app guesses what each column is, you confirm once, and it remembers that layout next time. Rows are deduped on parcel + address and merged into existing properties.</p>
 
       {!preview && (
         <label className={`card border-dashed text-center cursor-pointer ${busy ? "opacity-50" : ""}`}>
           <input type="file" accept=".csv,text/csv" className="hidden" disabled={Boolean(busy)} onChange={(e) => e.target.files?.[0] && choose(e.target.files[0])} />
-          <div className="text-2xl">📥</div>
-          <div className="font-medium">{busy ?? "Choose a CSV"}</div>
+          <div className="py-6">
+            <div className="font-bold text-lg">{busy ?? "Choose a CSV"}</div>
+            <div className="text-sm text-muted mt-1">BatchLeads export, skip-trace results, county list — any file with an address column.</div>
+          </div>
         </label>
       )}
 
@@ -158,7 +160,7 @@ export default function ImportPage() {
 
       {geo && (geo.running || geo.remaining > 0 || geo.matched > 0 || geo.error || (geo.unmatchedOnFile ?? 0) > 0) && (
         <section className="card text-sm">
-          <div className="label mb-1">Map pins (geocoding)</div>
+          <div className="font-bold mb-1">Map pins <span className="label font-normal">geocoding</span></div>
           {geo.running ? (
             <div>Finding coordinates… {geo.matched.toLocaleString()} placed so far, {geo.remaining.toLocaleString()} to go. Free US Census geocoder; a few thousand rows takes a couple of minutes.</div>
           ) : geo.error ? (
@@ -174,7 +176,7 @@ export default function ImportPage() {
       )}
 
       <section>
-        <div className="label mb-2">Import history</div>
+        <div className="font-bold mb-2">Import history</div>
         {logs.length === 0 ? <div className="text-sm text-muted">No imports yet.</div> : (
           <ul className="flex flex-col gap-2">
             {logs.map((l) => (

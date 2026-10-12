@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "TJ Record Reader",
-  "version": "0.2.0",
-  "description": "Prefills court-record party-name searches from the Distress Finder app and lets you save the visible results page back to a property. Human-driven: never submits or paginates for you.",
+  "name": "OverlookAI Record Reader",
+  "version": "0.3.0",
+  "description": "Prefills court-record party-name searches from the OverlookAI app and lets you save the visible results page back to a property. Human-driven: never submits or paginates for you.",
   "permissions": [
     "storage",
     "activeTab"
@@ -10,7 +10,9 @@
   "host_permissions": [
     "https://wcca.wicourts.gov/*",
     "http://localhost:3000/*",
-    "https://distress-finder-one.vercel.app/*"
+    "https://distress-finder-one.vercel.app/*",
+    "https://overlookai.app/*",
+    "https://www.overlookai.app/*"
   ],
   "optional_host_permissions": [
     "https://*/*"
@@ -33,12 +35,14 @@
     "matches": [
       "http://localhost:3000/*",
       "https://*.vercel.app/*",
-      "https://distress-finder-one.vercel.app/*"
+      "https://distress-finder-one.vercel.app/*",
+      "https://overlookai.app/*",
+      "https://www.overlookai.app/*"
     ]
   },
   "options_page": "options.html",
   "action": {
-    "default_title": "TJ Record Reader",
+    "default_title": "OverlookAI Record Reader",
     "default_popup": "popup.html",
     "default_icon": {
       "16": "icons/icon16.png",

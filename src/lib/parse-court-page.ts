@@ -2,7 +2,7 @@ import type { DistressType, Lien } from "@/lib/types";
 
 /**
  * Turns the visible text of a court-records results page (sent by the
- * TJ Record Reader extension) into Lien rows.
+ * OverlookAI Record Reader extension) into Lien rows.
  *
  * With ANTHROPIC_API_KEY: Claude Haiku 5.5 extracts the fields.
  * Without a key: a regex fallback catches Wisconsin case numbers

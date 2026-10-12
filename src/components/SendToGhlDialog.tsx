@@ -26,7 +26,8 @@ export default function SendToGhlDialog({ address, onCancel, onSend }: {
   }, []);
 
   const stages = pipelines?.find((p) => p.id === pipelineId)?.stages ?? [];
-  useEffect(() => { if (stages.length && !stages.some((s) => s.id === stageId)) setStageId(stages[0].id); }, [stages, stageId]);
+  // Keep the stage valid for the chosen pipeline (derived during render, no effect needed).
+  const effectiveStageId = stages.some((s) => s.id === stageId) ? stageId : (stages[0]?.id ?? "");
 
   return (
     <div className="fixed inset-0 z-40 bg-black/40 grid place-items-center px-4" onClick={onCancel}>
@@ -49,7 +50,7 @@ export default function SendToGhlDialog({ address, onCancel, onSend }: {
               </select>
             </label>
             <label className="text-sm flex flex-col gap-1">Stage
-              <select className="input" value={stageId} onChange={(e) => setStageId(e.target.value)}>
+              <select className="input" value={effectiveStageId} onChange={(e) => setStageId(e.target.value)}>
                 {stages.map((st) => <option key={st.id} value={st.id}>{st.name}</option>)}
               </select>
             </label>
@@ -59,7 +60,7 @@ export default function SendToGhlDialog({ address, onCancel, onSend }: {
         <div className="text-xs rounded-lg bg-warm/10 border border-warm px-3 py-2">Before any call or text, scrub this contact against the National DNC list and your internal DNC (TCPA).</div>
         <div className="flex justify-end gap-2">
           <button type="button" className="btn" onClick={onCancel}>Cancel</button>
-          <button type="button" className="btn btn-brand" disabled={configured && (!pipelines || Boolean(err))} onClick={() => onSend(configured ? { pipelineId, stageId, remember } : {})}>Send</button>
+          <button type="button" className="btn btn-brand" disabled={configured && (!pipelines || Boolean(err))} onClick={() => onSend(configured ? { pipelineId, stageId: effectiveStageId, remember } : {})}>Send</button>
         </div>
       </div>
     </div>

@@ -3,7 +3,7 @@ import { getRepo } from "@/lib/db";
 import { casesToLiens, parseCourtPage } from "@/lib/parse-court-page";
 
 /**
- * Called by the TJ Record Reader extension with the visible text of ONE
+ * Called by the OverlookAI Record Reader extension with the visible text of ONE
  * results page the user is looking at. Parses it, saves rows under the
  * property as "possible match", returns the count. Protected by a shared
  * token (DF_EXTENSION_TOKEN) because the route is reachable from any tab.

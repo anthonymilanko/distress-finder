@@ -3,7 +3,7 @@ import type { Property } from "@/lib/types";
 /**
  * One-click record-check links. Each returns a URL the browser opens in a new
  * tab; a human runs the search. The `df` query param carries the lookup for
- * the TJ Record Reader extension (which prefills the name fields and adds a
+ * the OverlookAI Record Reader extension (which prefills the name fields and adds a
  * "Save to property" button). Sites usually ignore unknown params, but if one
  * rejects it, drop `withDf` for that site.
  *

@@ -1,6 +1,6 @@
-# TJ Record Reader (Chrome extension, MV3)
+# OverlookAI Record Reader (Chrome extension, MV3)
 
-Prefills court-record party-name searches opened from the Distress Finder app, and adds a
+Prefills court-record party-name searches opened from the OverlookAI app, and adds a
 "Save to property" button that posts the visible results page text back to the app.
 
 ## Install

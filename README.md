@@ -1,6 +1,8 @@
-# Distress Finder — Phase 1 prototype
+# OverlookAI — Phase 1
 
-Internal web app for TJ Investment Group (wholesaling, WI / FL / TX). Finds distressed homes, shows the property card, runs one-click court checks, and pushes leads to GoHighLevel. Mobile-first; installs on iPhone as a home-screen app.
+*Find the houses everyone else overlooked.* Live at https://overlookai.app (GitHub → Vercel auto-deploy, Supabase storage, password gate).
+
+Internal web app for TJ Investment Group (formerly "Distress Finder") (wholesaling, WI / FL / TX). Finds distressed homes, shows the property card, runs one-click court checks, and pushes leads to GoHighLevel. Mobile-first; installs on iPhone as a home-screen app.
 
 The blueprint doc is the spec: *Distress Finder App — Build Blueprint* (Claude Docs).
 
@@ -29,7 +31,7 @@ With no keys set, the app runs on a local JSON file (`data/db.json`, seeded with
 | Property card | `/property/[id]` | Beds/baths/sqft/lot/year, owner, equity, Street View embed (display only), listing link-outs, court records table, lead status, GHL send, notes. |
 | CSV import | `/import` | BatchLeads exports. Normalizes, dedupes on parcel + address, merges into existing rows, shows a change log. |
 | One-click court checks | property card | WI → WCCA with `lastName/firstName` + `df` params. FL/TX → county clerk pages (add counties in `src/lib/court-links.ts`). |
-| TJ Record Reader extension | `extension/` | Prefills the name on WCCA, adds "Save to property". See `extension/README.md`. |
+| OverlookAI Record Reader extension | `extension/` | Prefills the name on WCCA, adds "Save to property". See `extension/README.md`. |
 | Court-page parsing | `/api/court/save` | Claude Haiku 5.5 with `ANTHROPIC_API_KEY`; regex fallback without. Everything saved as **possible match**. |
 | Scoring module | `src/lib/scoring` | Records points live now; image scorer is a plug-in (`Scorer`) for Phase 2. Daily spend cap (`DF_DAILY_AI_CAP_USD`, default $5) + cache keyed on parcel + image date. |
 | Settings | `/settings` | Integration status, AI spend today vs cap, iPhone install steps. |

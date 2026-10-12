@@ -1,36 +1,35 @@
 import Link from "next/link";
 import type { Property } from "@/lib/types";
-import { DISTRESS_LABEL, LEAD_LABEL, money, pct, scoreTone } from "@/lib/format";
+import { DISTRESS_LABEL, LEAD_LABEL, money, pct } from "@/lib/format";
+import ScoreRing from "./ScoreRing";
 
-export function ScoreBadge({ score }: { score?: number }) {
-  const tone = scoreTone(score);
-  const cls = { hot: "bg-hot text-white", warm: "bg-warm text-white", cool: "bg-cool text-white", none: "bg-line text-muted" }[tone];
-  return <span className={`chip ${cls}`}>{score == null ? "no score" : `Score ${score}`}</span>;
-}
-
+/** Compact list row: address, three facts, score ring. Click selects; the address opens the card. */
 export default function PropertyRow({ p, active, onClick }: { p: Property; active?: boolean; onClick?: () => void }) {
   return (
-    <div className={`card ${active ? "border-brand" : ""} flex flex-col gap-2`} onClick={onClick}>
-      <div className="flex items-start justify-between gap-2">
-        <div>
-          <div className="font-semibold leading-tight">{p.address}</div>
-          <div className="text-sm text-muted">{p.city}, {p.state} {p.zip}{p.isSample ? " · SAMPLE" : ""}</div>
+    <div
+      className={`group flex items-center gap-3 rounded-lg border px-3 py-2.5 bg-surface cursor-pointer transition-colors ${active ? "border-brand" : "border-line hover:border-ink/40"}`}
+      onClick={onClick}
+    >
+      <div className="min-w-0 flex-1">
+        <div className="flex items-baseline gap-2 min-w-0">
+          <Link href={`/property/${p.id}`} className="font-bold text-[15px] leading-tight truncate hover:underline" onClick={(e) => e.stopPropagation()}>{p.address}</Link>
+          {p.leadStatus !== "new" && <span className="chip bg-ink text-white">{LEAD_LABEL[p.leadStatus]}</span>}
+          {p.isSample && <span className="chip bg-line text-muted">sample</span>}
         </div>
-        <ScoreBadge score={p.distressScore} />
+        <div className="text-[13px] text-muted truncate">{p.city}, {p.state} {p.zip}</div>
+        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[13px]">
+          <span><span className="text-muted">Value </span><span className="font-semibold">{money(p.estValue)}</span></span>
+          <span><span className="text-muted">Equity </span><span className="font-semibold">{p.estEquityPct != null ? pct(p.estEquityPct) : "—"}</span></span>
+          <span><span className="text-muted">Owned </span><span className="font-semibold">{p.yearsOwned != null ? `${p.yearsOwned}y` : "—"}</span></span>
+          {p.absentee && <span className="text-muted">Absentee</span>}
+        </div>
+        {p.distressTypes.length > 0 && (
+          <div className="mt-1 flex flex-wrap gap-1">
+            {p.distressTypes.map((t) => <span key={t} className="chip bg-bg border border-line text-ink/80">{DISTRESS_LABEL[t]}</span>)}
+          </div>
+        )}
       </div>
-      <div className="flex flex-wrap gap-1">
-        {p.distressTypes.map((t) => (
-          <span key={t} className="chip bg-bg border border-line">{DISTRESS_LABEL[t]}</span>
-        ))}
-        {p.absentee && <span className="chip bg-bg border border-line">Absentee</span>}
-        {p.leadStatus !== "new" && <span className="chip bg-dark text-white">{LEAD_LABEL[p.leadStatus]}</span>}
-      </div>
-      <div className="grid grid-cols-3 gap-2 text-sm">
-        <div><div className="label">Est. value</div>{money(p.estValue)}</div>
-        <div><div className="label">Equity</div>{money(p.estEquity)} <span className="text-muted">({pct(p.estEquityPct)})</span></div>
-        <div><div className="label">Owned</div>{p.yearsOwned != null ? `${p.yearsOwned} yrs` : "—"}</div>
-      </div>
-      <Link href={`/property/${p.id}`} className="btn btn-brand mt-1 self-start" onClick={(e) => e.stopPropagation()}>Open card</Link>
+      <ScoreRing score={p.distressScore} size={44} />
     </div>
   );
 }

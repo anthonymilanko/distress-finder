@@ -1,4 +1,4 @@
-// TJ Record Reader - content script (runs on WCCA pages only).
+// OverlookAI Record Reader - content script (runs on WCCA pages only).
 // Prefills party-name fields and shows a "Save to property" panel.
 // It NEVER clicks Search, submits forms, paginates, or runs on a timer.
 (async () => {
@@ -95,7 +95,7 @@
       .s{margin-top:8px;min-height:16px;font-size:12px;word-break:break-word}
     </style>
     <div class="p">
-      <div class="t">TJ Record Reader</div>
+      <div class="t">OverlookAI Record Reader</div>
       <label>Property ID</label><input id="pid" placeholder="Paste property ID">
       <label>Searching name</label><div id="nm"></div>
       <button id="go">Save to property</button>

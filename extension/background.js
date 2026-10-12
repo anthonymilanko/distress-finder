@@ -1,4 +1,4 @@
-// TJ Record Reader - service worker.
+// OverlookAI Record Reader - service worker.
 // 1) Receives "df:start-lookup" from the app and opens the court search in a new tab.
 // 2) Performs the "save" POST on behalf of the content script (avoids page CORS).
 // Nothing here runs on a timer or submits any court form.

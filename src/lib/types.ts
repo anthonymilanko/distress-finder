@@ -1,4 +1,4 @@
-// Core domain types for Distress Finder (Phase 1).
+// Core domain types for OverlookAI (Phase 1).
 // Every lien / foreclosure / tax fact carries a source + date (see SourcedFact).
 
 export type LeadStatus = "new" | "lead" | "skip" | "watch";

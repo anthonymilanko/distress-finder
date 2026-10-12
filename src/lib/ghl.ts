@@ -77,7 +77,7 @@ export async function sendToGhl(p: Property, override?: { pipelineId?: string; s
     state: p.state,
     postalCode: p.zip,
     tags,
-    source: "Distress Finder",
+    source: "OverlookAI",
   };
   if (p.phones?.[0]) body.phone = `+1${p.phones[0]}`;
   if (p.emails?.[0]) body.email = p.emails[0];
@@ -105,7 +105,7 @@ export async function sendToGhl(p: Property, override?: { pipelineId?: string; s
       `Source: ${p.source} (${p.sourceDate})`,
     ].filter(Boolean);
     if (appNotes.length) {
-      lines.push("", "Notes from Distress Finder:");
+      lines.push("", "Notes from OverlookAI:");
       for (const n of [...appNotes].reverse()) lines.push(`• ${new Date(n.createdAt).toLocaleDateString("en-US")}: ${n.body}`);
     }
     await fetch(`${API}/contacts/${id}/notes`, { method: "POST", headers, body: JSON.stringify({ body: lines.join("\n") }) }).catch(() => {});
@@ -127,7 +127,7 @@ export async function sendToGhl(p: Property, override?: { pipelineId?: string; s
         status: "open",
         pipelineStageId: settings.stageId,
         ...(p.estValue != null ? { monetaryValue: Math.round(p.estValue) } : {}),
-        source: "Distress Finder",
+        source: "OverlookAI",
       }),
     });
     if (oppRes.ok) {

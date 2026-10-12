@@ -5,7 +5,7 @@ import Filters from "@/components/Filters";
 import PropertyRow from "@/components/PropertyRow";
 import type { Property, PropertyFilters } from "@/lib/types";
 
-const MapView = dynamic(() => import("@/components/MapView"), { ssr: false, loading: () => <div className="h-full grid place-items-center text-muted">Loading map…</div> });
+const MapView = dynamic(() => import("@/components/MapView"), { ssr: false, loading: () => <div className="h-full grid place-items-center text-muted text-sm">Loading map…</div> });
 
 export default function HomePage() {
   const [filters, setFilters] = useState<PropertyFilters>({});
@@ -25,24 +25,31 @@ export default function HomePage() {
 
   const onSelect = useCallback((id: string) => setSelected(id), []);
   const sel = rows.find((r) => r.id === selected);
+  const scored = rows.filter((r) => r.distressScore != null).length;
 
   return (
     <div className="flex flex-col h-[calc(100dvh-7.5rem)] md:h-dvh">
       <Filters value={filters} onChange={(f) => { setFilters(f); setSelected(null); setLoading(true); }} />
-      <div className="px-4 pb-2 flex items-center justify-between text-sm text-muted">
-        <span>{loading ? "Loading…" : total > rows.length ? `Showing top ${rows.length} of ${total.toLocaleString()} — add filters to narrow` : `${rows.length} properties`}</span>
-        <div className="inline-flex rounded-lg border border-line overflow-hidden md:hidden">
-          <button type="button" className={`px-3 py-1 ${view === "map" ? "bg-dark text-white" : "bg-surface"}`} onClick={() => setView("map")}>Map</button>
-          <button type="button" className={`px-3 py-1 ${view === "list" ? "bg-dark text-white" : "bg-surface"}`} onClick={() => setView("list")}>List</button>
+      <div className="px-4 pb-2 flex items-center justify-between text-[13px] text-muted">
+        <span>
+          {loading ? "Loading…" : total > rows.length ? <>Top <b className="text-ink">{rows.length}</b> of {total.toLocaleString()} · narrow with filters</> : <><b className="text-ink">{rows.length}</b> properties{scored ? `, ${scored} scored` : ""}</>}
+        </span>
+        <div className="inline-flex rounded-full border border-line overflow-hidden md:hidden">
+          <button type="button" className={`px-3 py-1 text-sm ${view === "map" ? "bg-ink text-white" : "bg-surface"}`} onClick={() => setView("map")}>Map</button>
+          <button type="button" className={`px-3 py-1 text-sm ${view === "list" ? "bg-ink text-white" : "bg-surface"}`} onClick={() => setView("list")}>List</button>
         </div>
       </div>
-      {/* Phone: one view at a time (toggle). Desktop: list beside map. */}
       <div className="flex flex-1 min-h-0">
-        <div className={`${view === "list" ? "flex" : "hidden"} md:flex w-full md:w-[26rem] shrink-0 flex-col md:border-r border-line overflow-y-auto px-4 pb-4 gap-3`}>
+        <div className={`${view === "list" ? "flex" : "hidden"} md:flex w-full md:w-[25rem] shrink-0 flex-col md:border-r border-line overflow-y-auto px-3 pb-4 gap-1.5`}>
           {rows.map((p) => (
             <PropertyRow key={p.id} p={p} active={p.id === selected} onClick={() => setSelected(p.id)} />
           ))}
-          {!loading && rows.length === 0 && <div className="text-muted text-center py-10">No properties match. Import a list or search an address.</div>}
+          {!loading && rows.length === 0 && (
+            <div className="text-center py-12 px-6 text-sm text-muted">
+              <div className="font-semibold text-ink mb-1">Nothing here yet</div>
+              Import a list or search an address to put houses on the map.
+            </div>
+          )}
         </div>
         <div className={`${view === "map" ? "block" : "hidden"} md:block relative flex-1 min-h-0`}>
           <MapView properties={rows} selectedId={selected} onSelect={onSelect} />

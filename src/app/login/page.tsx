@@ -1,6 +1,7 @@
 "use client";
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Logo from "@/components/Logo";
 
 function LoginForm() {
   const [pw, setPw] = useState("");
@@ -19,10 +20,13 @@ function LoginForm() {
   }
 
   return (
-    <form onSubmit={submit} className="card w-full max-w-sm flex flex-col gap-3">
-      <div>
-        <div className="text-lg font-semibold">Distress Finder</div>
-        <div className="text-sm text-muted">TJ Investment Group · private</div>
+    <form onSubmit={submit} className="card w-full max-w-sm flex flex-col gap-3 p-6">
+      <div className="flex items-center gap-3">
+        <Logo size={36} />
+        <div>
+          <div className="text-xl font-extrabold tracking-tight leading-none">Overlook<span className="text-brand">AI</span></div>
+          <div className="text-[13px] text-muted mt-1">Find the houses everyone else overlooked.</div>
+        </div>
       </div>
       <input className="input" type="password" placeholder="Password" value={pw} onChange={(e) => setPw(e.target.value)} autoFocus autoComplete="current-password" />
       {err && <div className="text-sm text-brand">{err}</div>}
