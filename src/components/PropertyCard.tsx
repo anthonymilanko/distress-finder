@@ -149,6 +149,9 @@ export default function PropertyCard({
             <Fact k="Last sale" v={p.lastSaleDate ? `${p.lastSaleDate}${p.lastSalePrice ? ` · ${money(p.lastSalePrice)}` : ""}` : undefined} />
             <Fact k="Mortgage balance" v={money(p.mortgageBalance)} />
             <Fact k="LTV" v={p.ltvPct != null ? `${Math.round(p.ltvPct)}%` : undefined} />
+            <Fact k="Lender" v={p.lenderName ?? undefined} />
+            <Fact k="Assessed" v={p.assessedValue != null ? money(p.assessedValue) : undefined} />
+            <Fact k="Taxes / yr" v={p.taxAmount != null ? money(p.taxAmount) : undefined} />
             <Fact k="Lot" v={p.lotSqft ? `${num(p.lotSqft)} sf` : undefined} />
             <Fact k="Type" v={p.propertyType ?? undefined} />
             <Fact k="Source" v={`${p.source} · ${p.sourceDate}`} />

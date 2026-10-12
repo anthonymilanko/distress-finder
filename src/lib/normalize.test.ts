@@ -1,7 +1,6 @@
 // Run: node --experimental-strip-types --test src/lib/normalize.test.ts
 import { test } from "node:test";
 import assert from "node:assert";
-// @ts-expect-error -- .ts import extension is needed for node --test - .ts extension is required for Node's native type stripping
 import { mapHeaders, normalizeRow, mergeProperty, normalizeParcel, normalizeAddressKey } from "./normalize.ts";
 
 const META = { source: "batchleads_csv", sourceDate: "2026-10-11", importBatchId: "batch-1" };

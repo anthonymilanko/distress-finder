@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getRepo } from "@/lib/db";
 import { batchDataLive, lookupByAddress } from "@/lib/batchdata";
 import { mergeProperty } from "@/lib/normalize";
+import { saveLookupLiens } from "@/lib/lookup-liens";
 
 /**
  * POST /api/properties/[id]/refresh — re-pull this property from BatchData (bypasses the cache; costs one lookup).
@@ -14,7 +15,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
   if (!existing) return NextResponse.json({ ok: false, error: "Not found" }, { status: 404 });
   if (!batchDataLive()) return NextResponse.json({ ok: false, error: "BatchData key not set — add BATCHDATA_API_KEY in Vercel." }, { status: 400 });
   try {
-    const { property: fresh, costUsd } = await lookupByAddress(
+    const { property: fresh, liens, costUsd } = await lookupByAddress(
       { street: existing.address, city: existing.city, state: existing.state, zip: existing.zip },
       { force: true, propertyId: id },
     );
@@ -33,6 +34,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
     merged.updatedAt = new Date().toISOString();
     if (existing.photos.length && !fresh.photos.length) merged.photos = existing.photos;
     const saved = await repo.upsertProperty(merged);
+    await saveLookupLiens(saved.id, liens);
     return NextResponse.json({ ok: true, property: saved, costUsd });
   } catch (e) {
     return NextResponse.json({ ok: false, error: (e as Error).message }, { status: 502 });

@@ -1,6 +1,8 @@
-import type { DistressType, Property, PropertyPhoto } from "@/lib/types";
-import { normalizeAddressKey, normalizeParcel } from "@/lib/normalize";
-import { getRepo } from "@/lib/db";
+import type { DistressType, Lien, Property } from "./types";
+import { normalizeAddressKey } from "./normalize";
+import { getRepo } from "./db";
+import { extractLiens, mapLookup } from "./batchdata-map";
+export { extractLiens, mapLookup } from "./batchdata-map";
 
 /**
  * BatchData client (api.batchdata.com).
@@ -85,6 +87,7 @@ export async function autocomplete(query: string): Promise<AddressSuggestion[]> 
 // ---------- Lookup ----------
 export interface LookupResult {
   property: Property;
+  liens: Lien[]; // foreclosure notice + open mortgages derived from the response
   cached: boolean;
   live: boolean; // false = mock
   costUsd: number;
@@ -95,9 +98,10 @@ export async function lookupByAddress(addr: ParsedAddress, opts: { force?: boole
   const repo = getRepo();
   const cacheKey = "bd:" + normalizeAddressKey(addr.street, addr.zip) + "|" + (addr.city ?? "").toUpperCase();
   const cached = opts.force ? null : await repo.getLookup<Property>(cacheKey);
-  if (cached) return { property: cached, cached: true, live: Boolean(KEY), costUsd: 0 };
+  if (cached) return { property: cached, liens: [], cached: true, live: Boolean(KEY), costUsd: 0 };
 
   let property: Property;
+  let liens: Lien[] = [];
   if (!KEY) {
     property = mockLookup(addr);
   } else {
@@ -109,87 +113,12 @@ export async function lookupByAddress(addr: ParsedAddress, opts: { force?: boole
     if (!raw) throw new Error("No property found for that address.");
     property = mapLookup(raw, addr);
     if (opts.propertyId) property.id = opts.propertyId;
+    liens = extractLiens(raw, property.id);
     // Keep the untouched response so the card can show "what BatchData said" and mapping can be tuned.
     await repo.putLookup(`bd:raw:${property.id}`, raw);
   }
   await repo.putLookup(cacheKey, property);
-  return { property, cached: false, live: Boolean(KEY), costUsd: KEY ? EST_COST_PER_LOOKUP : 0 };
-}
-
-// ---------- Mapping (defensive: every field optional) ----------
-type Any = Record<string, unknown>;
-const g = (o: unknown, ...path: string[]): unknown => path.reduce<unknown>((cur, k) => (cur && typeof cur === "object" ? (cur as Any)[k] : undefined), o);
-const num = (v: unknown): number | undefined => (v == null || v === "" ? undefined : Number.isFinite(Number(v)) ? Number(v) : undefined);
-const str = (v: unknown): string | undefined => (v == null ? undefined : String(v));
-const isoDate = (v: unknown): string | undefined => { const s = str(v); if (!s) return undefined; const d = new Date(s); return isNaN(+d) ? undefined : d.toISOString().slice(0, 10); };
-
-export function mapLookup(raw: Any, addr: ParsedAddress): Property {
-  const now = new Date().toISOString();
-  const address = str(g(raw, "address", "street")) ?? addr.street;
-  const city = str(g(raw, "address", "city")) ?? addr.city ?? "";
-  const state = (str(g(raw, "address", "state")) ?? addr.state ?? "").toUpperCase();
-  const zip = (str(g(raw, "address", "zip")) ?? addr.zip ?? "").slice(0, 5);
-  const parcel = str(g(raw, "general", "apn")) ?? str(g(raw, "ids", "apn")) ?? str(g(raw, "assessment", "apn")) ?? str(g(raw, "legal", "apn")) ?? str(raw.apn);
-  const mailingAddress = str(g(raw, "owner", "mailingAddress", "street"));
-  const ownerFirst = str(g(raw, "owner", "names", "0", "first")) ?? str(g(raw, "owner", "firstName"));
-  const ownerLast = str(g(raw, "owner", "names", "0", "last")) ?? str(g(raw, "owner", "lastName"));
-  const ownerName = str(g(raw, "owner", "fullName")) ?? str(g(raw, "owner", "names", "0", "full")) ?? str(g(raw, "owner", "name")) ?? ([ownerFirst, ownerLast].filter(Boolean).join(" ") || undefined);
-  const ownerOccupied = g(raw, "owner", "ownerOccupied") as boolean | undefined;
-  const estValue = num(g(raw, "valuation", "estimatedValue")) ?? num(g(raw, "valuation", "avm")) ?? num(g(raw, "assessment", "totalMarketValue")) ?? num(g(raw, "assessment", "assessedValue"));
-  const mortgageBalance = num(g(raw, "openLien", "totalOpenLienBalance")) ?? num(g(raw, "openLien", "totalOpenLienAmount")) ?? num(g(raw, "valuation", "loanBalance")) ?? num(g(raw, "mortgage", "totalBalance"));
-  const estEquity = num(g(raw, "valuation", "equityCurrentEstimatedBalance")) ?? (estValue != null && mortgageBalance != null ? estValue - mortgageBalance : undefined);
-  const estEquityPct = num(g(raw, "valuation", "equityPercent")) ?? num(g(raw, "valuation", "equityCurrentEstimatedPercent")) ?? (estValue && estEquity != null ? Math.round((estEquity / estValue) * 1000) / 10 : undefined);
-  const lastSaleDate = isoDate(g(raw, "sale", "lastSale", "saleDate")) ?? isoDate(g(raw, "sale", "lastSale", "recordingDate")) ?? isoDate(g(raw, "sale", "lastSaleDate")) ?? isoDate(g(raw, "deed", "lastSaleDate"));
-  const yearsOwned = lastSaleDate ? Math.floor((Date.now() - +new Date(lastSaleDate)) / (365.25 * 864e5)) : undefined;
-
-  const distressTypes: DistressType[] = [];
-  if (g(raw, "foreclosure", "status") || g(raw, "quickLists", "preforeclosure")) distressTypes.push("pre_foreclosure");
-  if (g(raw, "quickLists", "auction")) distressTypes.push("foreclosure");
-  if (g(raw, "quickLists", "taxDefault") || g(raw, "tax", "delinquent")) distressTypes.push("tax_delinquent");
-  if (g(raw, "quickLists", "involuntaryLien") || num(g(raw, "involuntaryLien", "count"))) distressTypes.push("lien");
-  if (g(raw, "quickLists", "vacant")) distressTypes.push("vacant");
-  if (g(raw, "quickLists", "inherited") || g(raw, "quickLists", "probate")) distressTypes.push("probate");
-  if (g(raw, "quickLists", "expiredListing")) distressTypes.push("expired_listing");
-
-  const photos: PropertyPhoto[] = ((g(raw, "images") as Array<Any> | undefined) ?? [])
-    .map((im) => str(im.url))
-    .filter((u): u is string => Boolean(u))
-    .map((url) => ({ url, source: "batchdata" as const }));
-
-  const mailingMismatch = mailingAddress ? normalizeAddressKey(mailingAddress) !== normalizeAddressKey(address) : undefined;
-  return {
-    id: crypto.randomUUID(),
-    parcel,
-    dedupeKey: parcel ? normalizeParcel(parcel) : normalizeAddressKey(address, zip),
-    address, city, state, zip,
-    county: str(g(raw, "address", "county")),
-    lat: num(g(raw, "address", "geoLocation", "latitude")) ?? num(g(raw, "address", "latitude")) ?? num(g(raw, "geoLocation", "latitude")) ?? num(g(raw, "general", "latitude")),
-    lng: num(g(raw, "address", "geoLocation", "longitude")) ?? num(g(raw, "address", "longitude")) ?? num(g(raw, "geoLocation", "longitude")) ?? num(g(raw, "general", "longitude")),
-    ownerName, ownerFirst, ownerLast,
-    ownerIsBusiness: Boolean(g(raw, "owner", "isCorporate") ?? g(raw, "quickLists", "corporateOwned")),
-    mailingAddress,
-    mailingCity: str(g(raw, "owner", "mailingAddress", "city")),
-    mailingState: str(g(raw, "owner", "mailingAddress", "state")),
-    mailingZip: str(g(raw, "owner", "mailingAddress", "zip")),
-    absentee: Boolean(g(raw, "quickLists", "absenteeOwner")) || (ownerOccupied === false ? true : undefined) || mailingMismatch,
-    beds: num(g(raw, "building", "bedroomCount")) ?? num(g(raw, "building", "bedrooms")) ?? num(g(raw, "building", "roomsBedrooms")),
-    baths: num(g(raw, "building", "bathroomCount")) ?? num(g(raw, "building", "bathrooms")) ?? num(g(raw, "building", "totalBathroomCount")),
-    sqft: num(g(raw, "building", "totalBuildingAreaSquareFeet")) ?? num(g(raw, "building", "livingAreaSquareFeet")) ?? num(g(raw, "building", "squareFeet")) ?? num(g(raw, "building", "buildingAreaSquareFeet")),
-    lotSqft: num(g(raw, "lot", "lotSizeSquareFeet")) ?? (num(g(raw, "lot", "lotSizeAcres")) != null ? Math.round(Number(g(raw, "lot", "lotSizeAcres")) * 43560) : undefined),
-    yearBuilt: num(g(raw, "building", "yearBuilt")) ?? num(g(raw, "building", "effectiveYearBuilt")),
-    propertyType: str(g(raw, "general", "propertyTypeDetail")) ?? str(g(raw, "general", "propertyType")) ?? str(g(raw, "general", "propertyTypeCategory")) ?? str(g(raw, "building", "propertyType")),
-    lastSaleDate,
-    lastSalePrice: num(g(raw, "sale", "lastSale", "price")) ?? num(g(raw, "sale", "lastSalePrice")) ?? num(g(raw, "deed", "lastSalePrice")),
-    estValue, mortgageBalance, estEquity, estEquityPct, yearsOwned,
-    distressTypes,
-    leadStatus: "new",
-    photos,
-    source: "batchdata_lookup",
-    sourceDate: now.slice(0, 10),
-    createdAt: now,
-    updatedAt: now,
-    isSample: false,
-  };
+  return { property, liens, cached: false, live: Boolean(KEY), costUsd: KEY ? EST_COST_PER_LOOKUP : 0 };
 }
 
 // ---------- Mock mode ----------

@@ -1,4 +1,4 @@
-import type { DistressType, LeadStatus } from "@/lib/types";
+import type { DistressType, LeadStatus } from "./types.ts";
 
 export const money = (n?: number | null) =>
   n == null || Number.isNaN(n) ? "—" : n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });

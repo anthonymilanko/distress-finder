@@ -1,6 +1,5 @@
 import { test } from "node:test";
 import assert from "node:assert";
-// @ts-expect-error -- .ts import extension is needed for node --test
 import { buildBatchCsv, parseBatchResponse } from "./geocode.ts";
 
 test("buildBatchCsv quotes fields and omits header", () => {

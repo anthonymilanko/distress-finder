@@ -94,6 +94,9 @@ export interface Property {
   estEquityPct?: number;
   ltvPct?: number; // loan-to-value; equity % = 100 - LTV when nothing better exists
   yearsOwned?: number;
+  assessedValue?: number; // county assessor total
+  taxAmount?: number; // annual property tax
+  lenderName?: string; // first open mortgage lender
   geocodeStatus?: "pending" | "matched" | "no_match" | "has_coords";
   // Distress (from import or lookup; details live in liens[])
   distressTypes: DistressType[];
