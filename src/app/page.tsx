@@ -1,11 +1,23 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import dynamic from "next/dynamic";
 import Filters from "@/components/Filters";
 import PropertyRow from "@/components/PropertyRow";
+import PropertyPeek from "@/components/PropertyPeek";
 import type { Property, PropertyFilters } from "@/lib/types";
 
 const MapView = dynamic(() => import("@/components/MapView"), { ssr: false, loading: () => <div className="h-full grid place-items-center text-muted text-sm">Loading map…</div> });
+
+const LIST_KEY = "ol:listOpen";
+const listeners = new Set<() => void>();
+const readListOpen = () => { try { return localStorage.getItem(LIST_KEY) !== "0"; } catch { return true; } };
+const subscribeListOpen = (cb: () => void) => { listeners.add(cb); return () => { listeners.delete(cb); }; };
+/** Per-browser "list column open" flag, SSR-safe (server renders it open). */
+function useListOpen(): [boolean, () => void] {
+  const open = useSyncExternalStore(subscribeListOpen, readListOpen, () => true);
+  const toggle = useCallback(() => { try { localStorage.setItem(LIST_KEY, open ? "0" : "1"); } catch {} listeners.forEach((cb) => cb()); }, [open]);
+  return [open, toggle];
+}
 
 export default function HomePage() {
   const [filters, setFilters] = useState<PropertyFilters>({});
@@ -13,7 +25,9 @@ export default function HomePage() {
   const [total, setTotal] = useState(0);
   const [selected, setSelected] = useState<string | null>(null);
   const [view, setView] = useState<"map" | "list">("map");
+  const [listOpen, toggleList] = useListOpen();
   const [loading, setLoading] = useState(true);
+
 
   useEffect(() => {
     const sp = new URLSearchParams();
@@ -24,6 +38,7 @@ export default function HomePage() {
   }, [filters]);
 
   const onSelect = useCallback((id: string) => setSelected(id), []);
+  const onClear = useCallback(() => setSelected(null), []);
   const sel = rows.find((r) => r.id === selected);
   const scored = rows.filter((r) => r.distressScore != null).length;
 
@@ -39,23 +54,42 @@ export default function HomePage() {
           <button type="button" className={`px-3 py-1 text-sm ${view === "list" ? "bg-ink text-white" : "bg-surface"}`} onClick={() => setView("list")}>List</button>
         </div>
       </div>
+
       <div className="flex flex-1 min-h-0">
-        <div className={`${view === "list" ? "flex" : "hidden"} md:flex w-full md:w-[25rem] shrink-0 flex-col md:border-r border-line overflow-y-auto px-3 pb-4 gap-1.5`}>
+        {/* Map (always full width on desktop; the list overlays nothing, it sits beside it) */}
+        <div className={`${view === "map" ? "block" : "hidden"} md:block relative flex-1 min-w-0 min-h-0`}>
+          <MapView properties={rows} selectedId={selected} onSelect={onSelect} onClear={onClear} />
+
+          {/* Pin peek: bottom-left on desktop, bottom sheet on phone */}
+          {sel && (
+            <div className="absolute inset-x-3 bottom-3 z-10 md:inset-x-auto md:left-3 md:bottom-3">
+              <PropertyPeek p={sel} onClose={onClear} />
+            </div>
+          )}
+
+          {/* Collapse / expand the list column (desktop) */}
+          <button
+            type="button"
+            onClick={toggleList}
+            aria-label={listOpen ? "Hide list" : "Show list"}
+            title={listOpen ? "Hide list" : "Show list"}
+            className="hidden md:grid absolute top-1/2 -translate-y-1/2 right-0 z-10 w-7 h-14 place-items-center rounded-l-md bg-surface border border-r-0 border-line text-ink shadow-[0_2px_8px_rgba(19,22,28,.12)] hover:bg-bg"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              {listOpen ? <path d="M9 6l6 6-6 6" /> : <path d="M15 6l-6 6 6 6" />}
+            </svg>
+          </button>
+        </div>
+
+        {/* List column on the right; collapsible on desktop */}
+        <div className={`${view === "list" ? "flex" : "hidden"} ${listOpen ? "md:flex" : "md:hidden"} w-full md:w-[25rem] shrink-0 flex-col md:border-l border-line overflow-y-auto px-3 pb-4 gap-1.5`}>
           {rows.map((p) => (
-            <PropertyRow key={p.id} p={p} active={p.id === selected} onClick={() => setSelected(p.id)} />
+            <PropertyRow key={p.id} p={p} active={p.id === selected} onClick={() => { setSelected(p.id); setView("map"); }} />
           ))}
           {!loading && rows.length === 0 && (
             <div className="text-center py-12 px-6 text-sm text-muted">
               <div className="font-semibold text-ink mb-1">Nothing here yet</div>
               Import a list or search an address to put houses on the map.
-            </div>
-          )}
-        </div>
-        <div className={`${view === "map" ? "block" : "hidden"} md:block relative flex-1 min-h-0`}>
-          <MapView properties={rows} selectedId={selected} onSelect={onSelect} />
-          {sel && (
-            <div className="absolute inset-x-3 bottom-3 z-10 md:hidden">
-              <PropertyRow p={sel} active />
             </div>
           )}
         </div>

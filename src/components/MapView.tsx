@@ -34,10 +34,12 @@ export default function MapView({
   properties,
   selectedId,
   onSelect,
+  onClear,
 }: {
   properties: Property[];
   selectedId?: string | null;
   onSelect: (id: string) => void;
+  onClear?: () => void;
 }) {
   const el = useRef<HTMLDivElement>(null);
   const map = useRef<MlMap | null>(null);
@@ -55,6 +57,7 @@ export default function MapView({
     };
   }, []);
 
+  // Build markers when the set of properties changes (not on every selection).
   useEffect(() => {
     const m = map.current;
     if (!m) return;
@@ -68,23 +71,34 @@ export default function MapView({
       dot.type = "button";
       dot.title = `${p.address}${p.distressScore != null ? ` · score ${p.distressScore}` : ""}`;
       const tone = scoreTone(p.distressScore);
-      dot.className = `ol-marker${p.id === selectedId ? " is-selected" : ""}`;
+      dot.className = "ol-marker";
       dot.style.background = TONE_COLOR[tone];
       dot.textContent = p.distressScore != null ? String(p.distressScore) : "";
-      dot.onclick = () => onSelect(p.id);
+      dot.onclick = (e) => { e.stopPropagation(); onSelect(p.id); };
       const mk = new maplibregl.Marker({ element: dot }).setLngLat([p.lng, p.lat]).addTo(m);
       markers.current.set(p.id, mk);
       bounds.extend([p.lng, p.lat]);
       any = true;
     }
-    if (any && !selectedId) m.fitBounds(bounds, { padding: 48, maxZoom: 13, duration: 400 });
-  }, [properties, selectedId, onSelect]);
+    if (any) m.fitBounds(bounds, { padding: 48, maxZoom: 13, duration: 400 });
+  }, [properties, onSelect]);
 
+  // Highlight + center the selected pin without rebuilding the others.
   useEffect(() => {
     const m = map.current;
+    for (const [id, mk] of markers.current) mk.getElement().classList.toggle("is-selected", id === selectedId);
     const p = properties.find((x) => x.id === selectedId);
-    if (m && p && p.lat != null && p.lng != null) m.easeTo({ center: [p.lng, p.lat], zoom: Math.max(m.getZoom(), 14), duration: 400 });
+    if (m && p && p.lat != null && p.lng != null) m.easeTo({ center: [p.lng, p.lat], zoom: Math.max(m.getZoom(), 12), duration: 400 });
   }, [selectedId, properties]);
+
+  // Clicking empty map clears the selection.
+  useEffect(() => {
+    const m = map.current;
+    if (!m || !onClear) return;
+    const h = () => onClear();
+    m.on("click", h);
+    return () => { m.off("click", h); };
+  }, [onClear]);
 
   return <div ref={el} className="w-full h-full" />;
 }
