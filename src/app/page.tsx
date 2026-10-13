@@ -5,6 +5,7 @@ import Filters from "@/components/Filters";
 import PropertyRow from "@/components/PropertyRow";
 import PropertyPeek from "@/components/PropertyPeek";
 import type { Property, PropertyFilters } from "@/lib/types";
+import { encodeRing, type LngLat } from "@/lib/geo";
 
 const MapView = dynamic(() => import("@/components/MapView"), { ssr: false, loading: () => <div className="h-full grid place-items-center text-muted text-sm">Loading map…</div> });
 
@@ -27,18 +28,20 @@ export default function HomePage() {
   const [view, setView] = useState<"map" | "list">("map");
   const [listOpen, toggleList] = useListOpen();
   const [loading, setLoading] = useState(true);
-
+  const [area, setArea] = useState<LngLat[] | null>(null);
 
   useEffect(() => {
     const sp = new URLSearchParams();
     Object.entries(filters).forEach(([k, v]) => { if (v !== undefined && v !== false && v !== "") sp.set(k, v === true ? "1" : String(v)); });
+    if (area) sp.set("polygon", encodeRing(area));
     let cancelled = false;
     fetch(`/api/properties?${sp}`).then((r) => r.json()).then((d) => { if (!cancelled) { setRows(d.properties ?? []); setTotal(d.total ?? d.count ?? 0); setLoading(false); } });
     return () => { cancelled = true; };
-  }, [filters]);
+  }, [filters, area]);
 
   const onSelect = useCallback((id: string) => setSelected(id), []);
   const onClear = useCallback(() => setSelected(null), []);
+  const onAreaChange = useCallback((ring: LngLat[] | null) => { setArea(ring); setSelected(null); setLoading(true); }, []);
   const sel = rows.find((r) => r.id === selected);
   const scored = rows.filter((r) => r.distressScore != null).length;
 
@@ -48,6 +51,7 @@ export default function HomePage() {
       <div className="px-4 pb-2 flex items-center justify-between text-[13px] text-muted">
         <span>
           {loading ? "Loading…" : total > rows.length ? <>Top <b className="text-ink">{rows.length}</b> of {total.toLocaleString()} · narrow with filters</> : <><b className="text-ink">{rows.length}</b> properties{scored ? `, ${scored} scored` : ""}</>}
+          {area && !loading && <> · <span className="text-brand font-semibold">inside drawn area</span> <button type="button" className="underline hover:text-ink" onClick={() => onAreaChange(null)}>clear</button></>}
         </span>
         <div className="inline-flex rounded-full border border-line overflow-hidden md:hidden">
           <button type="button" className={`px-3 py-1 text-sm ${view === "map" ? "bg-ink text-white" : "bg-surface"}`} onClick={() => setView("map")}>Map</button>
@@ -58,7 +62,7 @@ export default function HomePage() {
       <div className="flex flex-1 min-h-0">
         {/* Map (always full width on desktop; the list overlays nothing, it sits beside it) */}
         <div className={`${view === "map" ? "block" : "hidden"} md:block relative flex-1 min-w-0 min-h-0`}>
-          <MapView properties={rows} selectedId={selected} onSelect={onSelect} onClear={onClear} />
+          <MapView properties={rows} selectedId={selected} onSelect={onSelect} onClear={onClear} area={area} onAreaChange={onAreaChange} />
 
           {/* Pin peek: bottom-left on desktop, bottom sheet on phone */}
           {sel && (

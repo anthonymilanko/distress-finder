@@ -157,6 +157,8 @@ export interface PropertyFilters {
   distressType?: DistressType;
   leadStatus?: LeadStatus;
   minScore?: number;
+  /** Only properties inside this drawn area ([lng, lat] ring). Rows without coordinates are excluded. */
+  polygon?: [number, number][];
   limit?: number;
 }
 

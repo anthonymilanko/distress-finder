@@ -72,3 +72,9 @@ npm run lint && npm run build
 ## Next phases
 
 Phase 2: Haiku/Sonnet image scorer on your own photos + Mapillary. Phase 3: BatchData area search, Nearmap, metro mask. Phase 4: county connectors + change alerts. See the blueprint.
+
+## Map layers
+
+- **Map** — OpenStreetMap tiles (no key).
+- **Satellite** — Esri World Imagery + place labels (no key, attribution shown). Display only; never sent to the AI scorer. For heavy or commercial use, swap the `sat` source in `src/components/MapView.tsx` for MapTiler/Mapbox satellite with a key.
+- **Draw area** — click corners on the map, then Apply. The list, pins and counts are filtered to the area on the server (`?polygon=lng,lat;lng,lat;...`). Properties without coordinates are excluded while an area is active.

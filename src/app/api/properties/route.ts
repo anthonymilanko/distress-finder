@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getRepo } from "@/lib/db";
+import { decodeRing } from "@/lib/geo";
 import type { DistressType, LeadStatus, PropertyFilters } from "@/lib/types";
 
 export async function GET(request: Request) {
@@ -15,6 +16,7 @@ export async function GET(request: Request) {
     distressType: (sp.get("distressType") as DistressType) || undefined,
     leadStatus: (sp.get("leadStatus") as LeadStatus) || undefined,
     minScore: n("minScore"),
+    polygon: decodeRing(sp.get("polygon")),
     limit: n("limit"),
   };
   const repo = getRepo();

@@ -8,6 +8,7 @@ import type {
   PropertyFilters,
   ScoreResult,
 } from "@/lib/types";
+import { pointInPolygon } from "@/lib/geo";
 
 export interface SpendDay {
   day: string; // YYYY-MM-DD
@@ -69,6 +70,7 @@ export function applyFilters(all: Property[], f: PropertyFilters): Property[] {
     if (f.distressType && !p.distressTypes.includes(f.distressType)) return false;
     if (f.leadStatus && p.leadStatus !== f.leadStatus) return false;
     if (f.minScore != null && (p.distressScore ?? -1) < f.minScore) return false;
+    if (f.polygon && (p.lat == null || p.lng == null || !pointInPolygon(p.lng, p.lat, f.polygon))) return false;
     if (q) {
       const hay = `${p.address} ${p.city} ${p.zip} ${p.ownerName ?? ""} ${p.parcel ?? ""}`.toLowerCase();
       if (!hay.includes(q)) return false;
