@@ -5,7 +5,6 @@ import Logo from "./Logo";
 
 const items = [
   { href: "/", label: "Map", d: "M3 6l6-2 6 2 6-2v14l-6 2-6-2-6 2zM9 4v14M15 6v14" },
-  { href: "/search", label: "Search", d: "M11 4a7 7 0 100 14 7 7 0 000-14zM20 20l-3.5-3.5" },
   { href: "/import", label: "Import", d: "M12 3v12M7 10l5 5 5-5M4 17v3h16v-3" },
   { href: "/settings", label: "Settings", d: "M12 8a4 4 0 100 8 4 4 0 000-8zM4 12h2M18 12h2M12 4v2M12 18v2M6.3 6.3l1.4 1.4M16.3 16.3l1.4 1.4M6.3 17.7l1.4-1.4M16.3 7.7l1.4-1.4" },
 ];

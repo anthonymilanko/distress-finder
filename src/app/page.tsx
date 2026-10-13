@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import Filters from "@/components/Filters";
 import PropertyRow from "@/components/PropertyRow";
 import PropertyPeek from "@/components/PropertyPeek";
+import AddressSearch from "@/components/AddressSearch";
 import type { Property, PropertyFilters } from "@/lib/types";
 import { encodeRing, type LngLat } from "@/lib/geo";
 
@@ -41,13 +42,24 @@ export default function HomePage() {
 
   const onSelect = useCallback((id: string) => setSelected(id), []);
   const onClear = useCallback(() => setSelected(null), []);
+  // A looked-up property goes to the top of the list and opens its peek card on the map.
+  const onFound = useCallback((p: Property) => {
+    setRows((rs) => [p, ...rs.filter((r) => r.id !== p.id)]);
+    setSelected(p.id);
+    setView("map");
+  }, []);
   const onAreaChange = useCallback((ring: LngLat[] | null) => { setArea(ring); setSelected(null); setLoading(true); }, []);
   const sel = rows.find((r) => r.id === selected);
   const scored = rows.filter((r) => r.distressScore != null).length;
 
   return (
     <div className="flex flex-col h-[calc(100dvh-7.5rem)] md:h-dvh">
-      <Filters value={filters} onChange={(f) => { setFilters(f); setSelected(null); setLoading(true); }} />
+      <div className="flex flex-col md:flex-row md:items-center gap-2 px-4 pt-3">
+        <AddressSearch onFound={onFound} />
+        <div className="min-w-0 flex-1 -mx-4 md:mx-0">
+          <Filters value={filters} onChange={(f) => { setFilters(f); setSelected(null); setLoading(true); }} />
+        </div>
+      </div>
       <div className="px-4 pb-2 flex items-center justify-between text-[13px] text-muted">
         <span>
           {loading ? "Loading…" : total > rows.length ? <>Top <b className="text-ink">{rows.length}</b> of {total.toLocaleString()} · narrow with filters</> : <><b className="text-ink">{rows.length}</b> properties{scored ? `, ${scored} scored` : ""}</>}
